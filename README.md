@@ -2,6 +2,11 @@
 
 **A lock you set for yourself — and can't talk yourself out of.**
 
+[![CI](https://github.com/mckay12/Warden/actions/workflows/ci.yml/badge.svg)](https://github.com/mckay12/Warden/actions/workflows/ci.yml)
+[![Latest release](https://img.shields.io/github/v/release/mckay12/Warden?include_prereleases&label=release)](https://github.com/mckay12/Warden/releases)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6)
+
 Warden blocks adult content across **every browser on your Windows PC**, and the clever (or maybe slightly evil 😈) part is the timer: once you start a lock, *nobody can shorten or cancel it. Not you, not future-you at 2 a.m., not even by uninstalling it or killing the process.*
 
 It's a **commitment device**, not a parental-control suite. You install it on your own machine, for your own reasons, and you hand the keys to the version of you who made the decision on a good day. 💪
@@ -113,6 +118,21 @@ npx tauri build          # → app/src-tauri/target/release/bundle/nsis/Warden_0
 ```
 
 For quick iteration: `npx tauri build --debug --no-bundle` gives you a debug `warden-desktop.exe`.
+
+### 🚢 Releasing a new version (GitHub does the building)
+
+Pushing a version tag makes GitHub Actions build the installer on a clean Windows machine and attach it to a **draft pre-release** — you review it and press *Publish*. 🎯
+
+```powershell
+# 1) bump the version in app/src-tauri/tauri.conf.json AND app/src-tauri/Cargo.toml (and service/Cargo.toml)
+# 2) commit, then:
+git tag v0.2.0
+git push origin v0.2.0
+```
+
+- The workflow checks the tag matches the app version, builds the service and the installer, and adds the SHA-256 checksum to the draft's notes. 🔐
+- Want a **dry run** first? *Actions → Release → Run workflow* with the tag left empty just builds the installer and keeps it as a downloadable workflow artifact — nothing gets published.
+- Every push and pull request also runs the **CI** workflow: the service's Rust tests plus the UI logic tests (`node --test`). ✅
 
 <details>
 <summary>🐛 <b>Build gotchas I hit (so you don't have to)</b></summary>

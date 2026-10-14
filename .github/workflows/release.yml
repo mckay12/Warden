@@ -1,0 +1,122 @@
+name: Release
+
+# Builds the Windows installer on GitHub and attaches it to a release.
+#
+#   - Push a tag like v0.2.0  -> builds, then creates a DRAFT pre-release with
+#     the installer + checksum attached (or just attaches it if you already
+#     created the release). You review the draft and press Publish.
+#   - Run manually (Actions tab -> Release -> Run workflow):
+#       * leave "tag" empty  -> just build; the installer is kept as a workflow
+#         artifact (a safe dry run, nothing is published);
+#       * give an existing tag -> same as pushing that tag.
+#
+# The installer is unsigned, so it is always published as a pre-release.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Existing tag to attach the installer to (empty = build only, keep as artifact)'
+        required: false
+        default: ''
+
+permissions:
+  contents: read
+
+jobs:
+  installer:
+    name: Build installer
+    runs-on: windows-latest
+    permissions:
+      contents: write # create the draft release / upload the asset
+    env:
+      TAG: ${{ inputs.tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name || '') }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Tag must match the app version
+        if: env.TAG != ''
+        shell: pwsh
+        run: |
+          $version = (Get-Content app/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+          if ($env:TAG -ne "v$version") {
+            Write-Error "Tag '$($env:TAG)' does not match the app version 'v$version' in app/src-tauri/tauri.conf.json. Bump the version (and Cargo.toml) first, or fix the tag."
+            exit 1
+          }
+          "Version check OK: $($env:TAG)"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+
+      - name: Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install stable --profile minimal
+          rustup default stable
+          rustc --version
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            service
+            app/src-tauri
+
+      # The installer bundles the release service exe, so build that first.
+      - name: Build the service (release)
+        run: cargo build --release --manifest-path service/Cargo.toml
+
+      - name: Build the desktop app + NSIS installer
+        working-directory: app
+        shell: pwsh
+        run: |
+          npm ci
+          node scripts/sync-ui.mjs
+          npx tauri build
+
+      - name: Locate installer and compute checksum
+        id: pkg
+        shell: pwsh
+        run: |
+          $file = Get-ChildItem app/src-tauri/target/release/bundle/nsis/*-setup.exe | Select-Object -First 1
+          if (-not $file) { Write-Error "installer not found"; exit 1 }
+          $sha = (Get-FileHash $file.FullName -Algorithm SHA256).Hash.ToLower()
+          "path=$($file.FullName)" >> $env:GITHUB_OUTPUT
+          "name=$($file.Name)"     >> $env:GITHUB_OUTPUT
+          "sha=$sha"               >> $env:GITHUB_OUTPUT
+          "### $($file.Name)`n`nSHA-256: ``$sha```nSize: $([math]::Round($file.Length / 1MB, 2)) MB" >> $env:GITHUB_STEP_SUMMARY
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: warden-installer
+          path: ${{ steps.pkg.outputs.path }}
+          if-no-files-found: error
+
+      - name: Attach to the release
+        if: env.TAG != ''
+        shell: pwsh
+        run: |
+          $file = "${{ steps.pkg.outputs.path }}"
+          gh release view $env:TAG *> $null
+          if ($LASTEXITCODE -eq 0) {
+            Write-Host "Release $($env:TAG) exists - uploading the installer to it."
+            gh release upload $env:TAG $file --clobber
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          } else {
+            Write-Host "Creating a DRAFT pre-release for $($env:TAG)."
+            $notes = (Get-Content .github/release-notes.md -Raw) `
+              -replace '\{\{TAG\}\}', $env:TAG `
+              -replace '\{\{FILENAME\}\}', "${{ steps.pkg.outputs.name }}" `
+              -replace '\{\{SHA256\}\}', "${{ steps.pkg.outputs.sha }}"
+            Set-Content -Path release-notes.generated.md -Value $notes -Encoding utf8
+            gh release create $env:TAG $file --draft --prerelease --verify-tag `
+              --title "Warden $($env:TAG)" --notes-file release-notes.generated.md
+            if ($LASTEXITCODE -ne 0) { exit 1 }
+          }
