@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Warden — Lock Setup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body {
+    width: 380px;
+    height: 560px;
+    overflow: hidden;
+  }
+  .popup-frame {
+    width: 380px;
+    height: 560px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .popup-body {
+    flex: 1;
+    padding: var(--sp-24);
+    display: flex;
+    flex-direction: column;
+  }
+  h1.screen-title {
+    font-size: var(--fs-20);
+    font-weight: 600;
+    margin: 0 0 var(--sp-24);
+  }
+  .segmented {
+    display: flex;
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: var(--sp-16);
+  }
+  .segmented button {
+    flex: 1;
+    background: var(--bg-surface);
+    color: var(--text-muted);
+    border: none;
+    border-radius: 0;
+    padding: var(--sp-8) var(--sp-4);
+    font-size: var(--fs-12);
+    border-right: 1px solid var(--border-hairline);
+  }
+  .segmented button:last-child { border-right: none; }
+  .segmented button.active {
+    background: var(--accent-steel);
+    color: var(--text-primary);
+    font-weight: 600;
+  }
+  .duration-input {
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: var(--fs-28);
+    text-align: center;
+    padding: var(--sp-12);
+    margin-bottom: var(--sp-24);
+  }
+  .duration-input:focus-visible { outline: 2px solid var(--accent-steel); outline-offset: 2px; }
+  .divider-row {
+    display: flex;
+    align-items: center;
+    gap: var(--sp-12);
+    color: var(--text-muted);
+    font-size: var(--fs-12);
+    margin-bottom: var(--sp-24);
+  }
+  .divider-row::before, .divider-row::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border-hairline);
+  }
+  .btn-forever {
+    width: 100%;
+    background: transparent;
+    border: 1px solid var(--accent-steel);
+    color: var(--accent-steel);
+    padding: var(--sp-12);
+    font-weight: 600;
+    margin-bottom: var(--sp-24);
+  }
+  .btn-forever:hover { background: rgba(91, 122, 153, 0.12); }
+  .action-row {
+    margin-top: auto;
+    display: flex;
+    gap: var(--sp-12);
+  }
+  .action-row .btn-secondary { flex: 1; }
+  .action-row .btn-primary { flex: 1; }
+
+  /* Modal overlay */
+  .modal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(10, 12, 15, 0.72);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-24);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius);
+    padding: var(--sp-24);
+    width: 100%;
+  }
+  .modal p.modal-lead {
+    font-size: var(--fs-16);
+    font-weight: 600;
+    margin: 0 0 var(--sp-12);
+  }
+  .modal p.modal-body {
+    font-size: var(--fs-14);
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin: 0 0 var(--sp-24);
+  }
+  .modal .action-row { margin-top: 0; }
+</style>
+</head>
+<body>
+  <div class="popup-frame">
+    <div class="review-bar" role="group" aria-label="Prototype review controls — not part of the product UI">
+      <span class="review-label">Review only</span>
+      <button type="button" id="show-modal-btn">Show forever-lock confirmation modal</button>
+      <button type="button" id="hide-modal-btn">Hide modal</button>
+    </div>
+
+    <div class="popup-body">
+      <h1 class="screen-title">Set lock duration</h1>
+
+      <div class="segmented" role="group" aria-label="Duration unit">
+        <button type="button" class="active">Days</button>
+        <button type="button">Hours</button>
+        <button type="button">Minutes</button>
+        <button type="button">Seconds</button>
+      </div>
+
+      <input class="duration-input mono" type="text" value="1" aria-label="Duration value" inputmode="numeric">
+
+      <div class="divider-row">or</div>
+
+      <button class="btn-forever" id="lock-forever-btn">Lock forever</button>
+
+      <div class="action-row">
+        <button class="btn-secondary">Cancel</button>
+        <button class="btn-primary">Confirm lock</button>
+      </div>
+    </div>
+
+    <!-- 3.5 Forever-lock confirmation modal -->
+    <div class="modal-overlay" id="modal-overlay">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-lead">
+        <p class="modal-lead" id="modal-lead">This cannot be undone from here.</p>
+        <p class="modal-body">Locking forever removes the option to stop blocking from this interface. The only way back is an emergency unlock request, which takes 7 days to take effect once requested.</p>
+        <div class="action-row">
+          <button class="btn-secondary" id="modal-cancel-btn">Cancel</button>
+          <button class="btn-primary" id="modal-confirm-btn">Confirm — lock forever</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const overlay = document.getElementById('modal-overlay');
+    document.getElementById('lock-forever-btn').addEventListener('click', () => overlay.classList.add('open'));
+    document.getElementById('show-modal-btn').addEventListener('click', () => overlay.classList.add('open'));
+    document.getElementById('hide-modal-btn').addEventListener('click', () => overlay.classList.remove('open'));
+    document.getElementById('modal-cancel-btn').addEventListener('click', () => overlay.classList.remove('open'));
+    document.getElementById('modal-confirm-btn').addEventListener('click', () => overlay.classList.remove('open'));
+
+    if (new URLSearchParams(location.search).get('modal') === '1') overlay.classList.add('open');
+
+    document.querySelectorAll('.segmented button').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.segmented button').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

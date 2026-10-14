@@ -1,0 +1,344 @@
+:root {
+  --bg-base: #14171C;
+  --bg-surface: #1D2128;
+  --border-hairline: #2A2F38;
+  --text-primary: #E7E9EC;
+  --text-muted: #8B93A0;
+  --accent-steel: #5B7A99;
+  --signal-green: #5FA777;
+  --signal-amber: #D98E3B;
+  --signal-red: #B8564B;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: -apple-system, 'Segoe UI', sans-serif;
+  font-size: 14px;
+}
+
+.page-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 32px 24px 0;
+}
+
+.wordmark {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.page-title {
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.columns {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px;
+  display: grid;
+  /* minmax(0, 1fr), not 1fr: a plain 1fr column won't shrink below its content,
+     so a wide log row would stretch the whole page instead of scrolling inside
+     the log card. */
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 720px) {
+  .columns { grid-template-columns: minmax(0, 1fr); }
+}
+.log-col { min-width: 0; }
+
+.card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  padding: 24px;
+}
+.card + .card { margin-top: 16px; }
+
+.card-heading {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 8px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 13px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid transparent;
+}
+button:focus-visible {
+  outline: 2px solid var(--accent-steel);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--accent-steel);
+  color: var(--text-primary);
+  padding: 10px 12px;
+  font-weight: 600;
+  width: 100%;
+}
+.btn-primary:hover { background: #6b8bab; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent-steel);
+  border-color: var(--accent-steel);
+  padding: 10px 12px;
+  font-weight: 600;
+  width: 100%;
+}
+.btn-secondary:hover { background: rgba(91, 122, 153, 0.12); }
+
+.btn-tertiary {
+  background: transparent;
+  color: var(--text-muted);
+  padding: 6px 0;
+  font-weight: 500;
+  border: none;
+}
+.btn-tertiary:hover { color: var(--text-primary); text-decoration: underline; }
+
+/* ---- Lock card (mirrors popup.js's states, larger — spec §3.7) ---- */
+
+.lock-card { text-align: center; }
+
+.lock-status-text {
+  font-family: 'Consolas', monospace;
+  font-size: 28px;
+  margin-bottom: 10px;
+}
+.lock-status-text.muted { color: var(--text-muted); font-family: inherit; font-size: 15px; }
+.lock-status-text.amber { color: var(--signal-amber); }
+
+.lock-status-sub {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin-bottom: 14px;
+}
+
+.start-form {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border-hairline);
+  text-align: left;
+}
+
+.form-label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+
+.start-form input[type="number"] {
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'Consolas', monospace;
+  font-size: 14px;
+  padding: 8px;
+  margin-bottom: 8px;
+}
+
+/* ---- Duration picker ---- */
+.duration-picker { display: flex; gap: 6px; }
+.duration-unit { flex: 1; min-width: 0; }
+.duration-unit label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  text-align: center;
+  margin-bottom: 4px;
+}
+.duration-picker input[type="number"] {
+  padding: 8px 2px;
+  text-align: center;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.duration-picker input[type="number"]::-webkit-inner-spin-button,
+.duration-picker input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.duration-summary {
+  color: var(--text-muted);
+  font-size: 11px;
+  min-height: 15px;
+  margin: 6px 0 10px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+}
+.form-actions button { flex: 1; }
+
+.form-note {
+  color: var(--signal-red);
+  font-size: 11px;
+  margin: 6px 0 0;
+}
+.form-note:empty { display: none; }
+
+.eu-pending-box {
+  background: var(--bg-base);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 8px;
+  text-align: left;
+}
+
+.eu-title {
+  color: var(--signal-amber);
+  font-weight: 600;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+
+.eu-date {
+  color: var(--text-muted);
+  font-family: 'Consolas', monospace;
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+/* ---- Streak / week-compare cards ---- */
+
+.streak-number {
+  font-family: 'Consolas', monospace;
+  font-size: 40px;
+  color: var(--signal-green);
+  line-height: 1;
+}
+.streak-sub { color: var(--text-muted); font-size: 12px; margin-top: 4px; }
+
+.week-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 8px;
+}
+.week-row .week-label { font-size: 14px; color: var(--text-primary); }
+.week-row .week-value { font-family: 'Consolas', monospace; font-size: 20px; }
+.week-row .week-value.muted { color: var(--text-muted); }
+.week-delta { color: var(--text-muted); font-size: 12px; margin-top: 8px; }
+
+/* ---- Attempt log ---- */
+
+.log-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.log-heading h2 { font-size: 16px; font-weight: 600; margin: 0; }
+.log-heading .window-note { font-size: 12px; color: var(--text-muted); }
+
+/* The log never grows past this height: beyond it, the list scrolls
+   vertically inside the card and the rest of the page stays put. Never
+   sideways: long domain names wrap onto a second line instead. */
+.log-scroll {
+  max-height: 420px;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+/* Always-visible scrollbar (the default overlay one hides until hover),
+   styled to match the dark theme. */
+.log-scroll::-webkit-scrollbar { width: 10px; }
+.log-scroll::-webkit-scrollbar-track { background: var(--bg-base); border-radius: 5px; }
+.log-scroll::-webkit-scrollbar-thumb {
+  background: var(--border-hairline);
+  border: 2px solid var(--bg-base);
+  border-radius: 5px;
+}
+.log-scroll::-webkit-scrollbar-thumb:hover { background: var(--accent-steel); }
+
+table.log-table { width: 100%; border-collapse: collapse; }
+table.log-table th {
+  position: sticky; /* column headings stay put while the rows scroll */
+  top: 0;
+  z-index: 1;
+  background: var(--bg-surface);
+  text-align: left;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 8px 12px;
+  /* a box-shadow line, not border-bottom: borders don't travel with sticky
+     cells in a collapsed-border table */
+  box-shadow: inset 0 -1px 0 var(--border-hairline);
+}
+table.log-table td {
+  padding: 12px;
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 14px;
+}
+table.log-table tr:last-child td { border-bottom: none; }
+td.ts { font-family: 'Consolas', monospace; color: var(--text-muted); white-space: nowrap; }
+td.domain { color: var(--text-primary); overflow-wrap: anywhere; }
+
+.badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: lowercase;
+}
+.badge.blocklist { background: rgba(91, 122, 153, 0.18); color: var(--accent-steel); }
+.badge.keyword { background: transparent; color: var(--text-muted); border: 1px solid var(--border-hairline); }
+
+.empty-log {
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 32px 16px;
+  text-align: center;
+}
+
+/* ---- Emergency unlock history ---- */
+
+.eu-history h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }
+.eu-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-hairline);
+  font-size: 14px;
+}
+.eu-row:last-child { border-bottom: none; }
+.eu-row .eu-dates { color: var(--text-muted); font-family: 'Consolas', monospace; font-size: 12px; }
+.eu-row .eu-outcome {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 6px;
+  text-transform: lowercase;
+}
+.eu-outcome.pending { background: rgba(217, 142, 59, 0.16); color: var(--signal-amber); }
+.eu-outcome.applied { background: rgba(184, 86, 75, 0.16); color: var(--signal-red); }
+.eu-outcome.cancelled { background: rgba(139, 147, 160, 0.16); color: var(--text-muted); }

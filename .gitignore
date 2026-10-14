@@ -1,0 +1,29 @@
+# ---- secrets: never commit these ----
+*.pem
+*.key
+.env
+.env.*
+
+# ---- build output ----
+service/target/
+app/src-tauri/target/
+app/src-tauri/gen/
+app/node_modules/
+
+# ---- generated: app/scripts/sync-ui.mjs copies these from extension/ ----
+# (app/ui/desktop-shim.js and app/ui/desktop-late.js are hand-written and ARE tracked)
+app/ui/popup.html
+app/ui/popup.css
+app/ui/popup.js
+app/ui/dashboard.html
+app/ui/dashboard.css
+app/ui/dashboard.js
+app/ui/duration-picker.js
+
+# ---- local runtime data / junk ----
+*.db
+*.db-journal
+*.log
+*.tmp
+.DS_Store
+Thumbs.db

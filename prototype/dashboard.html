@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Warden — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body { min-height: 100vh; }
+  .page-wrap {
+    max-width: 1040px;
+    margin: 0 auto;
+    padding: var(--sp-32) var(--sp-24);
+  }
+  header.page-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: var(--sp-32);
+  }
+  .wordmark {
+    font-size: var(--fs-12);
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  h1.page-title { font-size: var(--fs-20); font-weight: 600; margin: 0; }
+
+  .columns {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: var(--sp-24);
+    align-items: start;
+  }
+  @media (max-width: 720px) {
+    .columns { grid-template-columns: 1fr; }
+  }
+
+  .card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius);
+    padding: var(--sp-24);
+  }
+  .card + .card { margin-top: var(--sp-16); }
+
+  /* Lock status card */
+  .lock-status-card { text-align: center; }
+  .lock-status-card .dial-wrap { display: flex; justify-content: center; margin: var(--sp-8) 0 var(--sp-16); }
+  .lock-status-card .status-line { color: var(--text-muted); font-size: var(--fs-14); margin-bottom: var(--sp-16); }
+  .lock-status-card .status-line.amber { color: var(--signal-amber); }
+  .lock-status-card .action-btn { width: 100%; }
+
+  /* Streak card */
+  .streak-card .card-heading { color: var(--text-muted); font-size: var(--fs-12); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 var(--sp-8); }
+  .streak-number { font-family: var(--font-mono); font-size: var(--fs-40); color: var(--signal-green); line-height: 1; }
+  .streak-sub { color: var(--text-muted); font-size: var(--fs-12); margin-top: var(--sp-4); }
+
+  /* Week comparison card */
+  .week-compare .card-heading { color: var(--text-muted); font-size: var(--fs-12); text-transform: uppercase; letter-spacing: 0.08em; margin: 0 0 var(--sp-16); }
+  .week-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: var(--sp-8); }
+  .week-row .week-label { font-size: var(--fs-14); color: var(--text-primary); }
+  .week-row .week-value { font-family: var(--font-mono); font-size: var(--fs-20); }
+  .week-delta { color: var(--text-muted); font-size: var(--fs-12); margin-top: var(--sp-8); }
+
+  /* Log column */
+  .log-heading { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: var(--sp-12); }
+  .log-heading h2 { font-size: var(--fs-16); font-weight: 600; margin: 0; }
+  .log-heading .window-note { font-size: var(--fs-12); color: var(--text-muted); }
+
+  table.log-table { width: 100%; border-collapse: collapse; }
+  table.log-table th {
+    text-align: left;
+    font-size: var(--fs-12);
+    color: var(--text-muted);
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: var(--sp-8) var(--sp-12);
+    border-bottom: 1px solid var(--border-hairline);
+  }
+  table.log-table td {
+    padding: var(--sp-12);
+    border-bottom: 1px solid var(--border-hairline);
+    font-size: var(--fs-14);
+  }
+  table.log-table tr:last-child td { border-bottom: none; }
+  td.ts { font-family: var(--font-mono); color: var(--text-muted); white-space: nowrap; }
+  td.domain { color: var(--text-primary); }
+
+  .badge {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: var(--radius);
+    text-transform: lowercase;
+  }
+  .badge.blocklist { background: rgba(91, 122, 153, 0.18); color: var(--accent-steel); }
+  .badge.keyword { background: transparent; color: var(--text-muted); border: 1px solid var(--border-hairline); }
+
+  .empty-log {
+    color: var(--text-muted);
+    font-size: var(--fs-14);
+    padding: var(--sp-32) var(--sp-16);
+    text-align: center;
+  }
+
+  /* Emergency unlock history */
+  .eu-history { margin-top: var(--sp-24); }
+  .eu-history h2 { font-size: var(--fs-16); font-weight: 600; margin: 0 0 var(--sp-12); }
+  .eu-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--sp-12);
+    border-bottom: 1px solid var(--border-hairline);
+    font-size: var(--fs-14);
+  }
+  .eu-row:last-child { border-bottom: none; }
+  .eu-row .eu-dates { color: var(--text-muted); font-family: var(--font-mono); font-size: var(--fs-12); }
+  .eu-row .eu-outcome { font-size: var(--fs-12); font-weight: 600; padding: 2px 8px; border-radius: var(--radius); }
+  .eu-outcome.applied { background: rgba(184, 86, 75, 0.16); color: var(--signal-red); }
+  .eu-outcome.cancelled { background: rgba(139, 147, 160, 0.16); color: var(--text-muted); }
+
+  [data-log-view] { display: none; }
+  [data-log-view].active { display: block; }
+</style>
+</head>
+<body>
+  <div class="review-bar" role="group" aria-label="Prototype review controls — not part of the product UI">
+    <span class="review-label">Review only</span>
+    <button type="button" data-lock-state-btn="idle" class="active">Lock: idle</button>
+    <button type="button" data-lock-state-btn="active">Lock: active</button>
+    <button type="button" data-lock-state-btn="forever">Lock: forever</button>
+    <span style="width:1px;background:var(--border-hairline);align-self:stretch;margin:0 4px"></span>
+    <button type="button" data-log-btn="populated" class="active">Log: populated</button>
+    <button type="button" data-log-btn="empty">Log: empty state</button>
+  </div>
+
+  <div class="page-wrap">
+    <header class="page-header">
+      <div class="wordmark">Warden</div>
+      <h1 class="page-title">Dashboard</h1>
+    </header>
+
+    <div class="columns">
+      <!-- LEFT: stats sidebar -->
+      <div class="sidebar-col">
+        <div class="card lock-status-card">
+          <div id="dash-lock-idle" data-lock-view="idle" class="active">
+            <div class="dial-wrap"><div id="dial-dash-idle"></div></div>
+            <div class="status-line">No lock active</div>
+            <button class="btn-primary action-btn">Start a lock</button>
+          </div>
+          <div id="dash-lock-active" data-lock-view="active" style="display:none">
+            <div class="dial-wrap"><div id="dial-dash-active"></div></div>
+            <div class="status-line amber">Locked until 4:30 PM</div>
+            <button class="btn-secondary action-btn">+ Extend lock</button>
+          </div>
+          <div id="dash-lock-forever" data-lock-view="forever" style="display:none">
+            <div class="dial-wrap"><div id="dial-dash-forever"></div></div>
+            <div class="status-line amber">Locked indefinitely</div>
+            <button class="btn-tertiary action-btn">Request emergency unlock</button>
+          </div>
+        </div>
+
+        <div class="card streak-card">
+          <div class="card-heading">Streak</div>
+          <div class="streak-number">4</div>
+          <div class="streak-sub">days</div>
+        </div>
+
+        <div class="card week-compare">
+          <div class="card-heading">Attempts blocked</div>
+          <div class="week-row">
+            <span class="week-label">This week</span>
+            <span class="week-value" style="color: var(--text-primary)">6</span>
+          </div>
+          <div class="week-row">
+            <span class="week-label">Last week</span>
+            <span class="week-value" style="color: var(--text-muted)">11</span>
+          </div>
+          <div class="week-delta">5 fewer than last week</div>
+        </div>
+      </div>
+
+      <!-- RIGHT: log -->
+      <div class="log-col">
+        <div class="card">
+          <div class="log-heading">
+            <h2>Attempt log</h2>
+            <span class="window-note">Last 30 days</span>
+          </div>
+
+          <div data-log-view="populated" class="active">
+            <table class="log-table">
+              <thead>
+                <tr><th>Timestamp</th><th>Domain</th><th>Match</th></tr>
+              </thead>
+              <tbody>
+                <tr><td class="ts">2026-08-28 09:14</td><td class="domain">twitter.com</td><td><span class="badge blocklist">blocklist</span></td></tr>
+                <tr><td class="ts">2026-08-28 08:52</td><td class="domain">reddit.com</td><td><span class="badge blocklist">blocklist</span></td></tr>
+                <tr><td class="ts">2026-08-27 22:03</td><td class="domain">youtube.com/shorts</td><td><span class="badge keyword">keyword</span></td></tr>
+                <tr><td class="ts">2026-08-27 14:37</td><td class="domain">instagram.com</td><td><span class="badge blocklist">blocklist</span></td></tr>
+                <tr><td class="ts">2026-08-26 20:11</td><td class="domain">news.ycombinator.com</td><td><span class="badge keyword">keyword</span></td></tr>
+                <tr><td class="ts">2026-08-26 11:45</td><td class="domain">tiktok.com</td><td><span class="badge blocklist">blocklist</span></td></tr>
+                <tr><td class="ts">2026-08-25 16:29</td><td class="domain">twitter.com</td><td><span class="badge blocklist">blocklist</span></td></tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div data-log-view="empty">
+            <div class="empty-log">No blocked attempts yet. This log fills in as Warden catches something.</div>
+          </div>
+        </div>
+
+        <div class="card eu-history">
+          <h2>Emergency unlock history</h2>
+          <div class="eu-row">
+            <div>
+              <div>Requested Aug 3, 2026</div>
+              <div class="eu-dates">Cooldown ended Aug 10, 2026</div>
+            </div>
+            <span class="eu-outcome cancelled">cancelled</span>
+          </div>
+          <div class="eu-row">
+            <div>
+              <div>Requested Jul 12, 2026</div>
+              <div class="eu-dates">Cooldown ended Jul 19, 2026</div>
+            </div>
+            <span class="eu-outcome applied">applied</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    const dashDialConfigs = {
+      idle: { el: 'dial-dash-idle', state: 'idle', progress: 0, timeText: '—', labelText: '', size: 180 },
+      active: { el: 'dial-dash-active', state: 'active', progress: 0.68, timeText: '2h 14m', labelText: 'remaining', size: 180 },
+      forever: { el: 'dial-dash-forever', state: 'forever', progress: 1, timeText: 'Locked', labelText: '', size: 180 },
+    };
+    function paintDashDial(key, animate) {
+      const cfg = dashDialConfigs[key];
+      renderDial(document.getElementById(cfg.el), { ...cfg, animate });
+    }
+    Object.keys(dashDialConfigs).forEach(key => paintDashDial(key, false));
+
+    const lockBtns = document.querySelectorAll('[data-lock-state-btn]');
+    function selectLockState(key, animate) {
+      lockBtns.forEach(b => b.classList.toggle('active', b.dataset.lockStateBtn === key));
+      ['idle', 'active', 'forever'].forEach(s => {
+        document.getElementById(`dash-lock-${s}`).style.display = s === key ? 'block' : 'none';
+      });
+      if (key !== 'idle') paintDashDial(key, animate);
+    }
+    lockBtns.forEach(btn => btn.addEventListener('click', () => selectLockState(btn.dataset.lockStateBtn, true)));
+
+    const initialLockState = new URLSearchParams(location.search).get('lock');
+    if (initialLockState && dashDialConfigs[initialLockState]) selectLockState(initialLockState, false);
+
+    const logBtns = document.querySelectorAll('[data-log-btn]');
+    logBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        logBtns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('[data-log-view]').forEach(v => v.classList.remove('active'));
+        document.querySelector(`[data-log-view="${btn.dataset.logBtn}"]`).classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

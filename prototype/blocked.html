@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Warden — Blocked</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  .page-body {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: var(--sp-32);
+  }
+  .blocked-card {
+    text-align: center;
+    max-width: 420px;
+  }
+  .dial-icon-wrap {
+    display: flex;
+    justify-content: center;
+    margin-bottom: var(--sp-24);
+  }
+  .blocked-title {
+    font-size: var(--fs-28);
+    font-weight: 600;
+    margin: 0 0 var(--sp-16);
+  }
+  .match-line {
+    color: var(--text-muted);
+    font-size: var(--fs-14);
+    margin: 0 0 var(--sp-8);
+  }
+  .lock-line {
+    color: var(--signal-amber);
+    font-family: var(--font-mono);
+    font-size: var(--fs-14);
+    margin: 0 0 var(--sp-24);
+  }
+  .go-back-btn { margin-top: var(--sp-8); }
+  [data-variant] { display: none; }
+  [data-variant].active { display: block; }
+</style>
+</head>
+<body>
+  <div class="review-bar" role="group" aria-label="Prototype review controls — not part of the product UI">
+    <span class="review-label">Review only</span>
+    <button type="button" data-variant-btn="with-lock" class="active">With active lock</button>
+    <button type="button" data-variant-btn="no-lock">No active lock</button>
+  </div>
+
+  <div class="page-body">
+    <!-- Variant: active lock shown -->
+    <div class="blocked-card" data-variant="with-lock" style="display:block">
+      <div class="dial-icon-wrap">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="var(--signal-red)" stroke-width="1.6"/>
+          <path d="M12 7v5l3.2 1.9" stroke="var(--signal-red)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 class="blocked-title">This site is blocked</h1>
+      <p class="match-line">Matched: domain blocklist</p>
+      <p class="lock-line">Lock active — 2h 14m remaining</p>
+      <button class="btn-secondary go-back-btn">Go back</button>
+    </div>
+
+    <!-- Variant: no active lock -->
+    <div class="blocked-card" data-variant="no-lock">
+      <div class="dial-icon-wrap">
+        <svg width="56" height="56" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" stroke="var(--signal-red)" stroke-width="1.6"/>
+          <path d="M12 7v5l3.2 1.9" stroke="var(--signal-red)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
+      <h1 class="blocked-title">This site is blocked</h1>
+      <p class="match-line" style="margin-bottom: var(--sp-24)">Matched: keyword pattern</p>
+      <button class="btn-secondary go-back-btn">Go back</button>
+    </div>
+  </div>
+
+  <script>
+    const buttons = document.querySelectorAll('[data-variant-btn]');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        document.querySelectorAll('[data-variant]').forEach(v => v.style.display = 'none');
+        document.querySelector(`[data-variant="${btn.dataset.variantBtn}"]`).style.display = 'block';
+      });
+    });
+  </script>
+</body>
+</html>

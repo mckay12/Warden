@@ -1,0 +1,199 @@
+/* Warden — shared design tokens + base styles for static prototype */
+
+:root {
+  --bg-base: #14171C;
+  --bg-surface: #1D2128;
+  --border-hairline: #2A2F38;
+  --text-primary: #E7E9EC;
+  --text-muted: #8B93A0;
+  --accent-steel: #5B7A99;
+  --signal-amber: #D98E3B;
+  --signal-green: #5FA777;
+  --signal-red: #B8564B;
+
+  --font-mono: 'JetBrains Mono', 'Consolas', monospace;
+  --font-sans: 'Inter', -apple-system, 'Segoe UI', sans-serif;
+
+  --fs-12: 12px;
+  --fs-14: 14px;
+  --fs-16: 16px;
+  --fs-20: 20px;
+  --fs-28: 28px;
+  --fs-40: 40px;
+
+  --sp-4: 4px;
+  --sp-8: 8px;
+  --sp-12: 12px;
+  --sp-16: 16px;
+  --sp-24: 24px;
+  --sp-32: 32px;
+
+  --radius: 6px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: var(--font-sans);
+  font-size: var(--fs-14);
+  border-radius: var(--radius);
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent-steel);
+  outline-offset: 2px;
+}
+
+/* Button variants */
+.btn-primary {
+  background: var(--accent-steel);
+  color: var(--text-primary);
+  padding: var(--sp-12) var(--sp-16);
+  font-weight: 600;
+}
+.btn-primary:hover { background: #6b8bab; }
+.btn-primary:active { background: #4f6c88; }
+.btn-primary:disabled { background: #3a4553; color: var(--text-muted); cursor: not-allowed; }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--accent-steel);
+  border-color: var(--accent-steel);
+  padding: var(--sp-12) var(--sp-16);
+  font-weight: 600;
+}
+.btn-secondary:hover { background: rgba(91, 122, 153, 0.12); }
+.btn-secondary:active { background: rgba(91, 122, 153, 0.2); }
+
+.btn-tertiary {
+  background: transparent;
+  color: var(--text-muted);
+  padding: var(--sp-8) var(--sp-12);
+  font-weight: 500;
+  border-color: transparent;
+}
+.btn-tertiary:hover { color: var(--text-primary); text-decoration: underline; }
+
+.link {
+  color: var(--accent-steel);
+  text-decoration: none;
+  font-size: var(--fs-14);
+}
+.link:hover { text-decoration: underline; }
+
+.mono { font-family: var(--font-mono); }
+
+/* ---- Dial component (SVG ring, real element not an image) ---- */
+.dial {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dial svg { transform: rotate(-90deg); display: block; }
+.dial .dial-track {
+  fill: none;
+  stroke: var(--border-hairline);
+  stroke-width: 8;
+}
+.dial .dial-progress {
+  fill: none;
+  stroke: var(--accent-steel);
+  stroke-width: 8;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 600ms ease, stroke 200ms ease;
+}
+.dial.state-active .dial-progress { stroke: var(--signal-amber); }
+.dial.state-forever .dial-progress { stroke: var(--signal-amber); }
+/* Idle: an unfilled ring outlined in accent-steel (no progress fill) — per spec 3.1 */
+.dial.state-idle .dial-track { stroke: var(--accent-steel); }
+
+.dial-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 2px;
+}
+.dial-center .dial-time {
+  font-family: var(--font-mono);
+  font-size: var(--fs-40);
+  line-height: 1;
+  color: var(--text-primary);
+}
+/* "Locked" reads wider than the numeral the 40px scale was sized for (spec §2) —
+   drop one step so it clears the ring rather than crowding it. */
+.dial-center .dial-time--word {
+  font-size: var(--fs-28);
+}
+.dial.state-idle .dial-center .dial-time { color: var(--text-muted); }
+.dial.state-active .dial-center .dial-time,
+.dial.state-forever .dial-center .dial-time { color: var(--signal-amber); }
+.dial-center .dial-label {
+  font-size: var(--fs-12);
+  color: var(--text-muted);
+  text-transform: lowercase;
+}
+
+@keyframes dial-fill-in {
+  from { stroke-dashoffset: var(--dial-circumference); }
+  to { stroke-dashoffset: var(--dial-target-offset); }
+}
+.dial.animate-fill .dial-progress {
+  animation: dial-fill-in 600ms ease forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dial .dial-progress { transition: none; }
+  .dial.animate-fill .dial-progress { animation: none; }
+}
+
+/* ---- Review-mode state switcher (not part of the product UI) ---- */
+.review-bar {
+  background: repeating-linear-gradient(45deg, #3a2f1a, #3a2f1a 10px, #33291a 10px, #33291a 20px);
+  border-bottom: 2px dashed var(--signal-amber);
+  padding: var(--sp-8);
+  display: flex;
+  gap: var(--sp-8);
+  flex-wrap: wrap;
+  align-items: center;
+}
+.review-bar .review-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--signal-amber);
+  font-weight: 700;
+  margin-right: var(--sp-4);
+}
+.review-bar button {
+  background: var(--bg-base);
+  color: var(--text-muted);
+  border: 1px solid var(--border-hairline);
+  padding: 4px 8px;
+  font-size: 11px;
+}
+.review-bar button.active {
+  background: var(--signal-amber);
+  color: #1a1408;
+  border-color: var(--signal-amber);
+  font-weight: 700;
+}
+.review-bar button:hover:not(.active) { color: var(--text-primary); }

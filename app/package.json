@@ -1,0 +1,14 @@
+{
+  "name": "warden-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Warden desktop app: tray + window front end for the Warden Windows service.",
+  "scripts": {
+    "sync-ui": "node scripts/sync-ui.mjs",
+    "dev": "npm run sync-ui && tauri dev",
+    "build": "npm run sync-ui && tauri build --no-bundle"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

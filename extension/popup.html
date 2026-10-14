@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Warden</title>
+<link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="wordmark">Warden</div>
+  <div class="status">
+    <span class="status-dot"></span>
+    <span id="status-text">Extension loaded</span>
+  </div>
+  <div class="meta" id="rule-count">Static blocklist: loading…</div>
+
+  <div class="lock-section" id="lock-section">
+    <div id="lock-loading" class="lock-view">
+      <div class="lock-status-text muted">Contacting service…</div>
+    </div>
+
+    <div id="lock-error" class="lock-view" hidden>
+      <div class="lock-status-text muted" id="lock-error-text">Service unreachable</div>
+    </div>
+
+    <div id="lock-idle" class="lock-view" hidden>
+      <div class="lock-status-text muted">No lock active</div>
+      <button class="btn-primary" id="show-start-form-btn">Start a lock</button>
+      <div class="start-form" id="start-form" hidden>
+        <span class="form-label">Duration</span>
+        <div data-duration-picker="start" data-default="0,0,1,0,0"></div>
+        <div class="form-actions">
+          <button class="btn-primary" id="start-timed-btn">Start</button>
+          <button class="btn-secondary" id="start-forever-btn">Lock forever</button>
+        </div>
+        <p class="form-note" id="start-error"></p>
+      </div>
+    </div>
+
+    <!-- No cancel/shorten control anywhere in this state, deliberately —
+         see the UI/UX spec: absence, not a disabled button. -->
+    <div id="lock-active" class="lock-view" hidden>
+      <div class="lock-status-text amber" id="active-countdown">—</div>
+      <div class="lock-status-sub" id="active-until">Locked until —</div>
+      <button class="btn-secondary" id="extend-btn">+ Extend lock</button>
+      <div class="start-form" id="extend-form" hidden>
+        <span class="form-label">Add time</span>
+        <div data-duration-picker="extend" data-default="0,0,0,5,0" data-summary-prefix="Adds"></div>
+        <div class="form-actions">
+          <button class="btn-primary" id="extend-confirm-btn">Extend</button>
+          <button class="btn-secondary" id="extend-cancel-btn">Cancel</button>
+        </div>
+      </div>
+      <p class="form-note" id="extend-error"></p>
+    </div>
+
+    <div id="lock-forever" class="lock-view" hidden>
+      <div class="lock-status-text amber">Locked indefinitely</div>
+
+      <div id="eu-idle">
+        <button class="btn-tertiary" id="emergency-unlock-btn">Request emergency unlock</button>
+        <p class="form-note" id="emergency-unlock-result"></p>
+      </div>
+
+      <div id="eu-pending" class="eu-pending-box" hidden>
+        <div class="eu-title">Emergency unlock requested</div>
+        <div class="eu-date" id="eu-takes-effect">Takes effect: —</div>
+        <button class="btn-tertiary" id="cancel-emergency-unlock-btn">Cancel request</button>
+        <p class="form-note" id="cancel-emergency-unlock-error"></p>
+      </div>
+    </div>
+  </div>
+
+  <div class="log-section">
+    <div class="log-heading">Attempt log (from service)</div>
+    <ul class="log-list" id="log-list"></ul>
+    <p class="log-empty" id="log-empty">No blocked attempts yet.</p>
+  </div>
+
+  <a href="#" class="link dashboard-link" id="dashboard-link">View dashboard →</a>
+
+  <p class="note">A lock can be extended but never shortened or cancelled. Lock state and the attempt log come from the Warden service.</p>
+  <script src="duration-picker.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

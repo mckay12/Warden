@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Warden — Popup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="shared.css">
+<style>
+  body {
+    width: 380px;
+    height: 560px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .popup-frame {
+    width: 380px;
+    height: 560px;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .popup-body {
+    flex: 1;
+    padding: var(--sp-24) var(--sp-24) var(--sp-16);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  .wordmark {
+    align-self: flex-start;
+    font-size: var(--fs-12);
+    letter-spacing: 0.14em;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  .dial-wrap { margin: var(--sp-24) 0 var(--sp-16); }
+  .status-line {
+    color: var(--text-muted);
+    font-size: var(--fs-14);
+    margin-bottom: var(--sp-4);
+  }
+  .status-line.amber { color: var(--signal-amber); }
+  .lock-meta {
+    color: var(--text-muted);
+    font-size: var(--fs-12);
+    margin-bottom: var(--sp-16);
+  }
+  .primary-action { width: 100%; margin-bottom: var(--sp-8); }
+  .primary-action.wide { width: 100%; }
+  .today-section {
+    width: 100%;
+    border-top: 1px solid var(--border-hairline);
+    padding-top: var(--sp-16);
+    margin-top: var(--sp-16);
+  }
+  .today-heading {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--fs-12);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: var(--sp-12);
+    position: relative;
+  }
+  .today-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--fs-14);
+    margin-bottom: var(--sp-8);
+  }
+  .today-row .value.green { color: var(--signal-green); font-family: var(--font-mono); }
+  .today-row .value.mono { font-family: var(--font-mono); }
+  .dashboard-link {
+    display: block;
+    text-align: center;
+    margin-top: var(--sp-8);
+  }
+  .emergency-pending {
+    width: 100%;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-hairline);
+    border-radius: var(--radius);
+    padding: var(--sp-12);
+    margin-top: var(--sp-4);
+    font-size: var(--fs-12);
+  }
+  .emergency-pending .eu-title { color: var(--signal-amber); font-weight: 600; margin-bottom: var(--sp-4); }
+  .emergency-pending .eu-date { color: var(--text-muted); font-family: var(--font-mono); margin-bottom: var(--sp-4); }
+  [data-view] { display: none; }
+  [data-view].active { display: flex; flex-direction: column; align-items: center; width: 100%; }
+</style>
+</head>
+<body>
+  <div class="popup-frame">
+    <div class="review-bar" role="group" aria-label="Prototype review controls — not part of the product UI">
+      <span class="review-label">Review only</span>
+      <button type="button" data-state-btn="idle" class="active">Idle</button>
+      <button type="button" data-state-btn="active">Active (timed)</button>
+      <button type="button" data-state-btn="forever">Active (forever)</button>
+      <button type="button" data-state-btn="forever-pending">Forever + EU pending</button>
+    </div>
+
+    <div class="popup-body">
+      <div class="wordmark">Warden</div>
+
+      <!-- IDLE STATE -->
+      <div data-view="idle" class="active">
+        <div class="dial-wrap"><div id="dial-idle"></div></div>
+        <div class="status-line">No lock active</div>
+        <div style="height: var(--sp-16)"></div>
+        <button class="btn-primary primary-action">Start a lock</button>
+
+        <div class="today-section">
+          <div class="today-heading">Today</div>
+          <div class="today-row"><span>0 attempts blocked</span></div>
+          <div class="today-row"><span>Streak</span><span class="value green">4 days</span></div>
+        </div>
+        <a href="dashboard.html" class="link dashboard-link">View dashboard →</a>
+      </div>
+
+      <!-- ACTIVE (TIMED) STATE -->
+      <div data-view="active">
+        <div class="dial-wrap"><div id="dial-active"></div></div>
+        <div class="status-line amber">Locked until 4:30 PM</div>
+        <div style="height: var(--sp-8)"></div>
+        <button class="btn-secondary primary-action">+ Extend lock</button>
+
+        <div class="today-section">
+          <div class="today-heading">Today</div>
+          <div class="today-row"><span>2 attempts blocked</span></div>
+          <div class="today-row"><span>Streak</span><span class="value green">4 days</span></div>
+        </div>
+        <a href="dashboard.html" class="link dashboard-link">View dashboard →</a>
+      </div>
+
+      <!-- ACTIVE (FOREVER) STATE -->
+      <div data-view="forever">
+        <div class="dial-wrap"><div id="dial-forever"></div></div>
+        <div class="status-line amber">Locked indefinitely</div>
+        <div style="height: var(--sp-8)"></div>
+        <button class="btn-tertiary">Request emergency unlock</button>
+
+        <div class="today-section">
+          <div class="today-heading">Today</div>
+          <div class="today-row"><span>1 attempt blocked</span></div>
+          <div class="today-row"><span>Streak</span><span class="value green">4 days</span></div>
+        </div>
+        <a href="dashboard.html" class="link dashboard-link">View dashboard →</a>
+      </div>
+
+      <!-- ACTIVE (FOREVER) + EMERGENCY UNLOCK PENDING -->
+      <div data-view="forever-pending">
+        <div class="dial-wrap" style="margin: var(--sp-12) 0 var(--sp-8)"><div id="dial-forever-pending"></div></div>
+        <div class="status-line amber">Locked indefinitely</div>
+
+        <div class="emergency-pending">
+          <div class="eu-title">Emergency unlock requested</div>
+          <div class="eu-date">Takes effect: Sep 4, 2026, in 6 days 4 hours</div>
+          <button class="btn-tertiary" style="padding-left:0">Cancel request</button>
+        </div>
+
+        <div class="today-section" style="margin-top: var(--sp-8); padding-top: var(--sp-8)">
+          <div class="today-heading">Today</div>
+          <div class="today-row"><span>1 attempt blocked</span></div>
+          <div class="today-row"><span>Streak</span><span class="value green">4 days</span></div>
+        </div>
+        <a href="dashboard.html" class="link dashboard-link">View dashboard →</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="shared.js"></script>
+  <script>
+    const dialConfigs = {
+      idle: { el: 'dial-idle', state: 'idle', progress: 0, timeText: '—', labelText: '' },
+      active: { el: 'dial-active', state: 'active', progress: 0.68, timeText: '2h 14m', labelText: 'remaining' },
+      forever: { el: 'dial-forever', state: 'forever', progress: 1, timeText: 'Locked', labelText: '' },
+      'forever-pending': { el: 'dial-forever-pending', state: 'forever', progress: 1, timeText: 'Locked', labelText: '', size: 108 },
+    };
+
+    function paintDial(key, animate) {
+      const cfg = dialConfigs[key];
+      renderDial(document.getElementById(cfg.el), { ...cfg, animate });
+    }
+
+    Object.keys(dialConfigs).forEach(key => paintDial(key, false));
+
+    const buttons = document.querySelectorAll('[data-state-btn]');
+    function selectState(key, animate) {
+      buttons.forEach(b => b.classList.toggle('active', b.dataset.stateBtn === key));
+      document.querySelectorAll('[data-view]').forEach(v => v.classList.remove('active'));
+      document.querySelector(`[data-view="${key}"]`).classList.add('active');
+      if (key !== 'idle') paintDial(key, animate);
+    }
+    buttons.forEach(btn => btn.addEventListener('click', () => selectState(btn.dataset.stateBtn, true)));
+
+    // ?state=idle|active|forever|forever-pending lets a reviewer link directly to a state.
+    const initialState = new URLSearchParams(location.search).get('state');
+    if (initialState && dialConfigs[initialState]) selectState(initialState, false);
+  </script>
+</body>
+</html>
