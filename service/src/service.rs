@@ -101,6 +101,7 @@ unsafe extern "system" fn service_main(_argc: u32, _argv: *mut PWSTR) {
             std::net::SocketAddr::from((std::net::Ipv6Addr::LOCALHOST, crate::dns_enforce::DNS_PORT)),
         ],
         upstreams: dns_upstreams.clone(),
+        allow: crate::dns_filter::new_allow(),
         on_block: crate::dns_filter::db_logging_hook(),
     })
     .unwrap_or_else(|e| {

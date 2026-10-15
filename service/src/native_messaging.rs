@@ -85,6 +85,9 @@ fn handle(request: &Value) -> Value {
         "get_emergency_unlock_history" => handle_get_emergency_unlock_history(request),
         "get_dashboard_stats" => handle_get_dashboard_stats(),
         "get_blocklist_domains" => handle_get_blocklist_domains(),
+        "request_exception" => handle_request_exception(request),
+        "list_exceptions" => handle_list_exceptions(),
+        "remove_exception" => handle_remove_exception(request),
         "" => json!({ "ok": false, "error": "missing 'type' field" }),
         other => json!({ "ok": false, "error": format!("unknown message type '{other}'") }),
     }
@@ -234,6 +237,78 @@ fn handle_get_emergency_unlock_history(request: &Value) -> Value {
 /// Starts a new lock — timed (`duration_seconds`) or `forever: true`.
 /// Rejects the request outright if a lock is already active/forever
 /// (ERD §2: only one at a time, enforced here in application logic).
+/// JSON for one exception, with its state worked out against the clock:
+/// "pending" (cooldown still running) or "active" (in force).
+fn exception_json(e: &db::allow_exception::AllowException, now: DateTime<Utc>) -> Value {
+    let effective = DateTime::parse_from_rfc3339(&e.effective_at).ok().map(|t| t.with_timezone(&Utc));
+    let seconds_left = effective.map(|t| (t - now).num_seconds().max(0)).unwrap_or(0);
+    json!({
+        "id": e.id,
+        "domain": e.domain,
+        "requested_at": e.requested_at,
+        "effective_at": e.effective_at,
+        "state": crate::exceptions::state_of(&e.effective_at, now),
+        "seconds_left": seconds_left,
+    })
+}
+
+/// Asks for an exception to the blocklist for one domain (a false positive).
+/// It only *starts a cooldown* - the domain stays blocked until it ends - so
+/// this can't be used to unblock something on impulse. See `exceptions`.
+fn handle_request_exception(request: &Value) -> Value {
+    let Some(domain) = request.get("domain").and_then(Value::as_str) else {
+        return err("request_exception requires a 'domain' string");
+    };
+    let conn = match db::open() {
+        Ok(c) => c,
+        Err(e) => return err(format!("db open failed: {e}")),
+    };
+    let now = Utc::now();
+    match crate::exceptions::request(&conn, domain, now) {
+        Ok(e) => json!({
+            "ok": true,
+            "exception": exception_json(&e, now),
+            "cooldown_hours": crate::exceptions::COOLDOWN_HOURS,
+        }),
+        Err(msg) => err(msg),
+    }
+}
+
+fn handle_list_exceptions() -> Value {
+    let conn = match db::open() {
+        Ok(c) => c,
+        Err(e) => return err(format!("db open failed: {e}")),
+    };
+    match db::allow_exception::list_open(&conn) {
+        Ok(rows) => {
+            let now = Utc::now();
+            json!({
+                "ok": true,
+                "exceptions": rows.iter().map(|e| exception_json(e, now)).collect::<Vec<_>>(),
+                "cooldown_hours": crate::exceptions::COOLDOWN_HOURS,
+            })
+        }
+        Err(e) => err(format!("db query failed: {e}")),
+    }
+}
+
+/// Cancels a pending exception or removes one that is in force. Instant: it
+/// can only make blocking stricter, so it needs no cooldown.
+fn handle_remove_exception(request: &Value) -> Value {
+    let Some(id) = request.get("id").and_then(Value::as_i64) else {
+        return err("remove_exception requires an integer 'id'");
+    };
+    let conn = match db::open() {
+        Ok(c) => c,
+        Err(e) => return err(format!("db open failed: {e}")),
+    };
+    match db::allow_exception::remove(&conn, id) {
+        Ok(true) => json!({ "ok": true }),
+        Ok(false) => err("no such open exception"),
+        Err(e) => err(format!("db update failed: {e}")),
+    }
+}
+
 fn handle_start_lock(request: &Value) -> Value {
     let conn = match db::open() {
         Ok(c) => c,

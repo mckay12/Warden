@@ -319,6 +319,53 @@ td.domain { color: var(--text-primary); overflow-wrap: anywhere; }
   text-align: center;
 }
 
+/* ---- "Not adult?" action in the attempt log + the Exceptions card ---- */
+
+td.row-action { text-align: right; white-space: nowrap; }
+.link-btn {
+  background: transparent;
+  border: none;
+  padding: 2px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--border-hairline);
+  text-underline-offset: 3px;
+}
+.link-btn:hover { color: var(--accent-steel); text-decoration-color: var(--accent-steel); }
+
+.exceptions .exc-help { color: var(--text-muted); font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
+.exceptions .exc-help b { color: var(--text-primary); font-weight: 600; }
+.exc-form { display: flex; gap: 8px; align-items: stretch; }
+.exc-form input[type="text"] {
+  flex: 1;
+  min-width: 0;
+  background: var(--bg-base);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'Consolas', monospace;
+  font-size: 14px;
+  padding: 9px 12px;
+}
+.exc-form input[type="text"]:focus { outline: none; border-color: var(--accent-steel); }
+.exc-form .btn-secondary { width: auto; white-space: nowrap; padding: 9px 16px; }
+.exc-list { list-style: none; margin: 14px 0 0; padding: 0; }
+.exc-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border-hairline);
+}
+.exc-domain { font-family: 'Consolas', monospace; color: var(--text-primary); overflow-wrap: anywhere; }
+.exc-state { color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+.exc-state.pending { color: var(--signal-amber); }
+.exc-state.active { color: var(--signal-green); }
+.exc-meta { display: flex; align-items: center; gap: 14px; }
+
 /* ---- Emergency unlock history ---- */
 
 .eu-history h2 { font-size: 16px; font-weight: 600; margin: 0 0 12px; }

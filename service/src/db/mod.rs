@@ -7,6 +7,7 @@
 
 mod schema;
 
+pub mod allow_exception;
 pub mod blocked_attempt;
 pub mod blocked_domain;
 pub mod blocklist_source;

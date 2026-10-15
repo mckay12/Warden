@@ -5,6 +5,7 @@ mod db_check;
 mod dns_enforce;
 mod dns_filter;
 mod emergency_unlock_logic;
+mod exceptions;
 mod extension_id;
 mod firewall;
 mod install;
@@ -136,6 +137,7 @@ fn main() {
             let cfg = dns_filter::Config {
                 listen,
                 upstreams: shared.clone(),
+                allow: dns_filter::new_allow(),
                 on_block: std::sync::Arc::new(|name, entry| {
                     println!("BLOCKED {name} (matched {entry})");
                 }),

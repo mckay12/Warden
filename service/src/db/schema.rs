@@ -64,6 +64,19 @@ CREATE TABLE IF NOT EXISTS keyword_rule (
     created_at    TEXT NOT NULL
 );
 
+-- Exceptions to the blocklist (false positives). Asking for one only starts a
+-- cooldown (effective_at); it is not in force until then. Removing one is
+-- instant, since that only makes blocking stricter.
+CREATE TABLE IF NOT EXISTS allow_exception (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    domain        TEXT NOT NULL,
+    requested_at  TEXT NOT NULL,
+    effective_at  TEXT NOT NULL,
+    status        TEXT NOT NULL CHECK (status IN ('active', 'removed')),
+    removed_at    TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_allow_exception_domain ON allow_exception(domain);
+
 CREATE TABLE IF NOT EXISTS service_config (
     id                                 INTEGER PRIMARY KEY CHECK (id = 1),
     blocklist_refresh_interval_hours   INTEGER NOT NULL,

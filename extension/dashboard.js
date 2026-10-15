@@ -310,10 +310,121 @@ sendMessage({ type: 'get_attempts', days: 30 }).then((response) => {
     badge.textContent = entry.match_type;
     matchTd.appendChild(badge);
 
-    tr.append(tsTd, domainTd, matchTd);
+    const actionTd = document.createElement('td');
+    actionTd.className = 'row-action';
+    const notAdult = document.createElement('button');
+    notAdult.className = 'link-btn';
+    notAdult.textContent = 'Not adult?';
+    notAdult.title = `Ask to unblock ${entry.domain}`;
+    notAdult.addEventListener('click', () => requestException(entry.domain));
+    actionTd.appendChild(notAdult);
+
+    tr.append(tsTd, domainTd, matchTd, actionTd);
     tbody.appendChild(tr);
   }
 });
+
+// ---- Exceptions (false positives) ----
+// Asking only starts a cooldown (see service/src/exceptions.rs); cancelling or
+// removing is instant, because that only ever makes blocking stricter.
+
+let exceptionCooldownHours = 24;
+
+function describeTimeLeft(seconds) {
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${m}m`;
+  return `${Math.max(m, 1)}m`;
+}
+
+async function requestException(rawDomain) {
+  const errorEl = document.getElementById('exc-error');
+  const domain = String(rawDomain || '').trim();
+  if (!domain) {
+    errorEl.textContent = 'Enter a domain, like example.com.';
+    return;
+  }
+  if (!confirm(
+    `Ask to unblock ${domain}?\n\nIt will stay blocked for ${exceptionCooldownHours} hours first, and you can cancel before then. ` +
+    `Only do this if it isn't an adult site.`,
+  )) {
+    return;
+  }
+  const response = await sendMessage({ type: 'request_exception', domain });
+  if (!response.ok) {
+    errorEl.textContent = response.error;
+    return;
+  }
+  errorEl.textContent = '';
+  document.getElementById('exc-domain').value = '';
+  refreshExceptions();
+}
+
+function refreshExceptions() {
+  return sendMessage({ type: 'list_exceptions' }).then((response) => {
+    const list = document.getElementById('exc-list');
+    const empty = document.getElementById('exc-empty');
+    const form = document.getElementById('exc-form');
+    list.innerHTML = '';
+
+    if (!response.ok) {
+      // An older service doesn't know these messages; the form would only error.
+      form.hidden = true;
+      empty.hidden = false;
+      empty.textContent = response.unreachable
+        ? `Service unreachable (${response.error})`
+        : 'Exceptions need a newer version of the Warden service.';
+      return;
+    }
+    form.hidden = false;
+    exceptionCooldownHours = response.cooldown_hours || exceptionCooldownHours;
+    document.getElementById('exc-hours').textContent = exceptionCooldownHours;
+    empty.hidden = response.exceptions.length > 0;
+    empty.textContent = 'No exceptions.';
+
+    for (const ex of response.exceptions) {
+      const li = document.createElement('li');
+
+      const domain = document.createElement('span');
+      domain.className = 'exc-domain';
+      domain.textContent = ex.domain;
+
+      const state = document.createElement('span');
+      state.className = `exc-state ${ex.state}`;
+      state.textContent = ex.state === 'pending'
+        ? `unblocks in ${describeTimeLeft(ex.seconds_left)}`
+        : 'unblocked';
+
+      const action = document.createElement('button');
+      action.className = 'link-btn';
+      action.textContent = ex.state === 'pending' ? 'Cancel' : 'Remove';
+      action.addEventListener('click', async () => {
+        const result = await sendMessage({ type: 'remove_exception', id: ex.id });
+        document.getElementById('exc-error').textContent = result.ok ? '' : result.error;
+        refreshExceptions();
+      });
+
+      const meta = document.createElement('span');
+      meta.className = 'exc-meta';
+      meta.append(state, action);
+      li.append(domain, meta);
+      list.appendChild(li);
+    }
+  });
+}
+
+document.getElementById('exc-request-btn').addEventListener('click', () => {
+  requestException(document.getElementById('exc-domain').value);
+});
+document.getElementById('exc-domain').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') requestException(event.target.value);
+});
+
+refreshExceptions();
+// Keep the countdowns honest while the page stays open.
+setInterval(refreshExceptions, 30000);
 
 // ---- Emergency unlock history ----
 

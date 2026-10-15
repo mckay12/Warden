@@ -23,6 +23,7 @@ It's a **commitment device**, not a parental-control suite. You install it on yo
 | 🌐 **Blocks every browser** | A local DNS filter covers Chrome, Edge, Brave, Firefox and friends — **including Incognito / private windows**. |
 | 🧱 **Hard to wriggle out of** | System DNS is re-pointed at the filter *every second* while locked. Delete a setting? Back in about a second. |
 | 🕵️ **Closes the sneaky doors** | Secure-DNS (DoH) is switched off in browsers, known DoH/DoT servers are firewalled, Brave's Tor windows and VPN are disabled. |
+| 🩹 **Fix false positives** | The adult list isn't perfect. Ask for an **exception** for a site that was blocked by mistake — it takes effect after a deliberate **24-hour cooldown**, so it can't be used on impulse. |
 | 📊 **Streaks & stats** | A dashboard with your clean-day streak, weekly counts and an attempt log. One visit = one attempt (not 40 CDN lookups). |
 | 🚨 **An honest escape hatch** | "Lock forever" isn't a dead end: an emergency unlock exists, with a deliberate **7-day cooldown** (cancellable while pending, and always logged). |
 | 🖥️ **Proper desktop app** | Tray icon, dashboard window, start-at-login, single-instance, and a real installer. |
@@ -82,6 +83,19 @@ Build or grab `Warden_0.1.0_x64-setup.exe` (see [Building](#-building-from-sourc
 4. Need more time? **+ Extend lock** lets you add any amount. There's deliberately **no** button to cut a lock short — that's the whole point.
 
 > 🖱️ Closing the window with **✕** only hides it to the tray. To fully quit the app, use the tray menu → *Quit app (lock stays active)*. The lock never depends on the app being open.
+
+---
+
+## 🩹 When the blocklist gets it wrong
+
+The downloaded adult-domain list is community-compiled, so it occasionally blocks something innocent (a directory of anime sites, a placeholder-image service for developers…). Warden has a way to deal with that **without** giving you an instant "unblock" button to use at 2 a.m.:
+
+1. In the dashboard, click **Not adult?** next to the attempt, or type a domain in the **Exceptions** card. *(Pasting a whole URL is fine — it gets tidied up.)*
+2. Confirm. The exception is now **pending** and the site **stays blocked** for **24 hours**.
+3. After the cooldown it's allowed — the exception covers that domain and its subdomains. Exempted sites also stop counting as attempts.
+4. **Cancelling** a pending exception or **removing** an active one is *instant* — that only ever makes blocking stricter. 🔒
+
+A few guard rails: a site's exception can't override a *more specific* listing (excepting `tumblr.com` won't unblock a listed `bad.tumblr.com`), you can have at most 25 open at once, IPs and overly broad suffixes like `co.uk` are refused, and it all works **during a lock** with no reinstall.
 
 ---
 
@@ -163,7 +177,7 @@ Each folder has its own README with the deep dive — the [service README](servi
 
 ## 🧪 Tested for real
 
-This wasn't just "it compiles". On a real Windows 11 machine I verified: DNS takeover and exact restore · blocking through the normal Windows resolver (0 leaks in 40 lookups) · real Chrome, Edge and Brave reporting the policies as applied · a lock surviving a **reboot** · tamper attempts (`sc stop`, `sc delete`, resetting DNS by hand, deleting policies and firewall rules, running the uninstaller mid-lock, running the installer mid-lock) · an in-place upgrade · and a full uninstall → reinstall. The service has 68 unit tests (`cargo test`).
+This wasn't just "it compiles". On a real Windows 11 machine I verified: DNS takeover and exact restore · blocking through the normal Windows resolver (0 leaks in 40 lookups) · real Chrome, Edge and Brave reporting the policies as applied · a lock surviving a **reboot** · tamper attempts (`sc stop`, `sc delete`, resetting DNS by hand, deleting policies and firewall rules, running the uninstaller mid-lock, running the installer mid-lock) · an in-place upgrade · and a full uninstall → reinstall. The service has 79 unit tests (`cargo test`), the UI logic has its own (`node --test`), and the exception flow was exercised end to end against an isolated service instance (block → request → cooldown → unblock → remove).
 
 ---
 
@@ -189,6 +203,7 @@ And a gentle note: Warden is a tool, not therapy. If this is a struggle, talking
 - 🧾 A signed installer (before sharing it widely)
 - 🔔 Extra friction / reminders around the "Lock forever" flow
 - 🧹 Smarter grouping and nicer stats on the dashboard
+- 📮 One-click "report this false positive" to the upstream blocklist
 - 🌍 Firefox verification and more browser coverage
 
 ---

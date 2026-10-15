@@ -28,6 +28,7 @@ use crate::logging::log_line;
 const UPSTREAM_TIMEOUT: Duration = Duration::from_secs(2);
 const SINKHOLE_TTL: u32 = 60;
 const RELOAD_CHECK_INTERVAL: Duration = Duration::from_secs(30);
+const EXCEPTION_RELOAD_INTERVAL: Duration = Duration::from_secs(10);
 
 const TYPE_A: u16 = 1;
 const TYPE_AAAA: u16 = 28;
@@ -82,6 +83,12 @@ impl Blocklist {
         self.hashes.len()
     }
 
+    /// Whether exactly this (already-normalised) name is in the list - no
+    /// parent-domain walk.
+    fn contains(&self, candidate: &str) -> bool {
+        self.hashes.binary_search(&hash_domain(candidate)).is_ok()
+    }
+
     /// Returns the listed domain that matched (the name itself or its
     /// nearest listed parent), so a hit on `cdn.evil.com` caused by `evil.com`
     /// can be reported as `evil.com`. Single-label suffixes (bare TLDs) are
@@ -107,6 +114,31 @@ pub fn load_blocklist() -> Blocklist {
     match std::fs::read_to_string(list_path()) {
         Ok(text) if !text.trim().is_empty() => Blocklist::from_domains(text.lines()),
         _ => Blocklist::from_domains(BUNDLED.lines()),
+    }
+}
+
+/// The blocklist entry that blocks `name`, unless an exception applies.
+///
+/// Walks from the full name up through its parents and stops at the first
+/// level where either list has an entry: if that level is excepted the name is
+/// allowed, otherwise it is blocked. So the *most specific* entry wins:
+///   - exception `wotaku.wiki` + listed `wotaku.wiki`     -> allowed
+///   - exception `tumblr.com`  + listed `bad.tumblr.com`  -> `bad.tumblr.com` still blocked
+/// Single-label suffixes (bare TLDs) are never considered.
+pub fn blocked_entry(block: &Blocklist, allow: &Blocklist, name: &str) -> Option<String> {
+    let name = normalize(name);
+    let mut candidate = name.as_str();
+    loop {
+        if !candidate.contains('.') {
+            return None;
+        }
+        if allow.contains(candidate) {
+            return None;
+        }
+        if block.contains(candidate) {
+            return Some(candidate.to_string());
+        }
+        candidate = candidate.split_once('.')?.1;
     }
 }
 
@@ -271,10 +303,19 @@ pub fn new_upstreams(initial: Vec<SocketAddr>) -> Upstreams {
     Arc::new(RwLock::new(initial))
 }
 
+/// Domains currently excepted from the blocklist (see `exceptions`), swapped
+/// in place by `exception_reload_loop` as requests mature or are removed.
+pub type Allow = Arc<RwLock<Arc<Blocklist>>>;
+
+pub fn new_allow() -> Allow {
+    Arc::new(RwLock::new(Arc::new(Blocklist::default())))
+}
+
 #[derive(Clone)]
 pub struct Config {
     pub listen: Vec<SocketAddr>,
     pub upstreams: Upstreams,
+    pub allow: Allow,
     pub on_block: BlockHook,
 }
 
@@ -346,7 +387,7 @@ pub fn default_upstreams() -> Vec<SocketAddr> {
 /// labels (`bbc.co.uk`, not `co.uk`). A short built-in list rather than the
 /// full Public Suffix List: it only decides how an attempt is *labelled*, and
 /// a miss just shows the shorter name.
-const TWO_LEVEL_SUFFIXES: &[&str] = &[
+pub(crate) const TWO_LEVEL_SUFFIXES: &[&str] = &[
     "co.uk", "org.uk", "ac.uk", "gov.uk", "me.uk", "com.au", "net.au", "org.au", "co.nz",
     "co.jp", "ne.jp", "or.jp", "com.br", "com.mx", "com.ar", "co.za", "co.in", "com.tr",
     "com.cn", "com.hk", "com.sg", "com.tw", "co.kr", "com.ua", "com.pl", "co.il",
@@ -438,7 +479,8 @@ fn answer(
         return Some(build_nxdomain(query, &q));
     }
     let current = list.read().ok()?.clone();
-    if let Some(entry) = current.matching_entry(&q.name) {
+    let allow = cfg.allow.read().ok()?.clone();
+    if let Some(entry) = blocked_entry(&current, &allow, &q.name) {
         if q.qtype == TYPE_A || q.qtype == TYPE_AAAA {
             (cfg.on_block)(&q.name, &entry);
         }
@@ -463,6 +505,9 @@ pub fn spawn(cfg: Config) -> Result<Vec<SocketAddr>, String> {
         "dns_filter: loaded {} blocked domains.",
         list.read().map(|l| l.len()).unwrap_or(0)
     ));
+
+    // Exceptions take effect from the very first query, not 10s after start.
+    reload_exceptions(&cfg.allow);
 
     let mut bound: Vec<SocketAddr> = Vec::new();
     for addr in &cfg.listen {
@@ -497,6 +542,8 @@ pub fn spawn(cfg: Config) -> Result<Vec<SocketAddr>, String> {
     }
 
     thread::spawn(move || reload_loop(list));
+    let allow = cfg.allow.clone();
+    thread::spawn(move || exception_reload_loop(allow));
     Ok(bound)
 }
 
@@ -564,6 +611,30 @@ fn reload_loop(list: Arc<RwLock<Arc<Blocklist>>>) {
     }
 }
 
+/// Re-reads the in-force exceptions from the database into `allow`. If the
+/// database can't be read the previous set is kept (never silently cleared).
+fn reload_exceptions(allow: &Allow) {
+    let Ok(conn) = crate::db::open() else { return };
+    let Ok(domains) = crate::exceptions::in_force(&conn, chrono::Utc::now()) else { return };
+    let fresh = Blocklist::from_domains(&domains);
+    let changed = allow.read().map(|cur| cur.hashes != fresh.hashes).unwrap_or(true);
+    if changed {
+        log_line(&format!("dns_filter: {} exception(s) in force: {}", domains.len(), domains.join(", ")));
+        if let Ok(mut guard) = allow.write() {
+            *guard = Arc::new(fresh);
+        }
+    }
+}
+
+/// Exceptions mature by the clock (a pending one becomes in force once its
+/// cooldown passes) and can be removed at any moment, so poll the database.
+fn exception_reload_loop(allow: Allow) {
+    loop {
+        thread::sleep(EXCEPTION_RELOAD_INTERVAL);
+        reload_exceptions(&allow);
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -590,6 +661,46 @@ mod tests {
         assert!(bl.matching_entry("notevil.com").is_none());
         assert!(bl.matching_entry("evil.com.au").is_none());
         assert!(bl.matching_entry("example.org").is_none());
+    }
+
+    #[test]
+    fn an_exception_unblocks_a_listed_site_and_its_subdomains() {
+        let block = Blocklist::from_domains(["wotaku.wiki", "placeholder.com"]);
+        let none = Blocklist::default();
+        let allow = Blocklist::from_domains(["wotaku.wiki"]);
+        assert_eq!(blocked_entry(&block, &none, "wotaku.wiki").as_deref(), Some("wotaku.wiki"));
+        assert_eq!(blocked_entry(&block, &allow, "wotaku.wiki"), None);
+        assert_eq!(blocked_entry(&block, &allow, "www.wotaku.wiki"), None);
+        assert_eq!(blocked_entry(&block, &allow, "a.b.wotaku.wiki"), None);
+        // an exception for one site doesn't touch another listed site
+        assert_eq!(blocked_entry(&block, &allow, "via.placeholder.com").as_deref(), Some("placeholder.com"));
+    }
+
+    #[test]
+    fn a_more_specific_listing_beats_a_broader_exception() {
+        let block = Blocklist::from_domains(["bad.tumblr.com", "also-bad.tumblr.com"]);
+        let allow = Blocklist::from_domains(["tumblr.com"]);
+        assert_eq!(blocked_entry(&block, &allow, "bad.tumblr.com").as_deref(), Some("bad.tumblr.com"));
+        assert_eq!(blocked_entry(&block, &allow, "x.bad.tumblr.com").as_deref(), Some("bad.tumblr.com"));
+        assert_eq!(blocked_entry(&block, &allow, "fine.tumblr.com"), None);
+    }
+
+    #[test]
+    fn a_more_specific_exception_beats_a_broader_listing() {
+        let block = Blocklist::from_domains(["example.com"]);
+        let allow = Blocklist::from_domains(["docs.example.com"]);
+        assert_eq!(blocked_entry(&block, &allow, "docs.example.com"), None);
+        assert_eq!(blocked_entry(&block, &allow, "x.docs.example.com"), None);
+        assert_eq!(blocked_entry(&block, &allow, "www.example.com").as_deref(), Some("example.com"));
+    }
+
+    #[test]
+    fn blocked_entry_without_exceptions_matches_the_old_behaviour() {
+        let block = Blocklist::from_domains(["evil.com"]);
+        let none = Blocklist::default();
+        for name in ["evil.com", "www.evil.com", "a.b.evil.com", "notevil.com", "evil.com.au", "com"] {
+            assert_eq!(blocked_entry(&block, &none, name), block.matching_entry(name), "{name}");
+        }
     }
 
     #[test]

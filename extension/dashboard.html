@@ -100,12 +100,31 @@
         <div class="log-scroll" id="log-scroll">
           <table class="log-table" id="log-table" hidden>
             <thead>
-              <tr><th>Timestamp</th><th>Domain</th><th>Match</th></tr>
+              <tr><th>Timestamp</th><th>Domain</th><th>Match</th><th></th></tr>
             </thead>
             <tbody id="log-tbody"></tbody>
           </table>
         </div>
         <div class="empty-log" id="log-empty" hidden>No blocked attempts yet. This log fills in as Warden catches something.</div>
+      </div>
+
+      <div class="card exceptions" id="exceptions-card">
+        <div class="log-heading">
+          <h2>Exceptions</h2>
+          <span class="window-note">for sites blocked by mistake</span>
+        </div>
+        <p class="exc-help">
+          Blocked a site that isn't adult? Ask for an exception. It only starts a
+          <b id="exc-hours">24</b>-hour cooldown &mdash; the site stays blocked until then, so
+          it can't be used on impulse &mdash; and you can cancel it any time before it takes effect.
+        </p>
+        <div class="exc-form" id="exc-form">
+          <input type="text" id="exc-domain" placeholder="example.com" autocomplete="off" spellcheck="false">
+          <button class="btn-secondary" id="exc-request-btn">Request exception</button>
+        </div>
+        <p class="form-note" id="exc-error"></p>
+        <ul class="exc-list" id="exc-list"></ul>
+        <div class="empty-log" id="exc-empty" hidden>No exceptions.</div>
       </div>
 
       <div class="card eu-history" id="eu-history-card" hidden>
