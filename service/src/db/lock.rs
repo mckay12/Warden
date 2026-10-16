@@ -13,6 +13,7 @@ fn from_row(row: &Row) -> rusqlite::Result<Lock> {
         expires_at: row.get("expires_at")?,
         ended_at: row.get("ended_at")?,
         created_at: row.get("created_at")?,
+        cancelled_at: row.get("cancelled_at")?,
     })
 }
 
@@ -65,6 +66,19 @@ pub fn end(conn: &Connection, id: i64) -> rusqlite::Result<()> {
         params![now(), id],
     )?;
     Ok(())
+}
+
+/// Ends a lock early because it was undone inside its undo window. Recorded
+/// as an expired lock with `cancelled_at` set, so history shows it. Returns
+/// whether a still-running lock was changed.
+pub fn cancel(conn: &Connection, id: i64) -> rusqlite::Result<bool> {
+    let ts = now();
+    let changed = conn.execute(
+        "UPDATE lock SET status = 'expired', ended_at = ?1, cancelled_at = ?1
+         WHERE id = ?2 AND status IN ('active', 'forever')",
+        params![ts, id],
+    )?;
+    Ok(changed > 0)
 }
 
 /// Recalculates `expires_at` after an extension is applied.

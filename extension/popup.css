@@ -272,3 +272,49 @@ button:focus-visible {
   padding-top: 12px;
   margin: 0;
 }
+
+/* ---- Typed-confirmation dialog ---- */
+.warden-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.65);
+}
+.warden-modal {
+  width: 100%;
+  max-width: 420px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-hairline);
+  border-radius: 8px;
+  padding: 20px;
+  text-align: left;
+}
+.warden-modal h3 { margin: 0 0 10px; font-size: 16px; font-weight: 600; color: var(--text-primary); }
+.warden-modal-text { white-space: pre-line; color: var(--text-muted); font-size: 13px; line-height: 1.5; margin: 0 0 14px; }
+.warden-modal label { display: block; color: var(--text-muted); font-size: 12px; margin-bottom: 6px; }
+.warden-modal label b { color: var(--text-primary); font-weight: 600; }
+.warden-modal input[type="text"] {
+  width: 100%;
+  background: var(--bg-base);
+  border: 1px solid var(--border-hairline);
+  border-radius: 6px;
+  color: var(--text-primary);
+  font-family: 'Consolas', monospace;
+  font-size: 14px;
+  padding: 9px 12px;
+}
+.warden-modal input[type="text"]:focus { outline: none; border-color: var(--accent-steel); }
+.warden-modal-actions { display: flex; gap: 8px; margin-top: 14px; }
+.warden-modal-actions button { flex: 1; }
+.warden-modal .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ---- Undo box ---- */
+.undo-box { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--border-hairline); text-align: center; }
+.undo-text { display: block; color: var(--text-muted); font-size: 12px; margin-bottom: 4px; }
+.undo-btn { color: var(--signal-amber); font-size: 13px; text-decoration-color: var(--signal-amber); }
+.link-btn { background: transparent; border: none; cursor: pointer; padding: 2px 0; color: var(--text-muted); font-size: 12px; text-decoration: underline; text-underline-offset: 3px; }
+.link-btn:hover { color: var(--accent-steel); }

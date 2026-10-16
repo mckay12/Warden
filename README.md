@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows%2010%2F11-0078D6)
 
-Warden blocks adult content across **every browser on your Windows PC**, and the clever (or maybe slightly evil 😈) part is the timer: once you start a lock, *nobody can shorten or cancel it. Not you, not future-you at 2 a.m., not even by uninstalling it or killing the process.*
+Warden blocks adult content across **every browser on your Windows PC**, and the clever (or maybe slightly evil 😈) part is the timer: once a lock has settled in, *nobody can shorten or cancel it. Not you, not future-you at 2 a.m., not even by uninstalling it or killing the process.* (There's a deliberate **5-minute undo window** right after you start one, just to catch slips — more on that below.)
 
 It's a **commitment device**, not a parental-control suite. You install it on your own machine, for your own reasons, and you hand the keys to the version of you who made the decision on a good day. 💪
 
@@ -19,7 +19,8 @@ It's a **commitment device**, not a parental-control suite. You install it on yo
 
 | | |
 |---|---|
-| 🔒 **Unshortenable lock** | Pick a duration (years, days, hours, minutes, seconds — up to 100 years) or lock forever. You can *extend* a lock any time; you can never shorten or cancel it. |
+| 🔒 **Unshortenable lock** | Pick a duration (years, days, hours, minutes, seconds — up to 100 years) or lock forever. You can *extend* a lock any time; you can never shorten it. Cancelling is only possible in the first **5 minutes**, to catch a slip. |
+| ⌨️ **Typed confirmation** | Long locks (7+ days), long extensions and "lock forever" make you **type what you're committing to** (e.g. `183 days`) before they start. |
 | 🌐 **Blocks every browser** | A local DNS filter covers Chrome, Edge, Brave, Firefox and friends — **including Incognito / private windows**. |
 | 🧱 **Hard to wriggle out of** | System DNS is re-pointed at the filter *every second* while locked. Delete a setting? Back in about a second. |
 | 🕵️ **Closes the sneaky doors** | Secure-DNS (DoH) is switched off in browsers, known DoH/DoT servers are firewalled, Brave's Tor windows and VPN are disabled. |
@@ -78,9 +79,10 @@ Build or grab `Warden_0.1.0_x64-setup.exe` (see [Building](#-building-from-sourc
 
 1. Open **Warden** (tray icon → *Open Warden*, or the Start menu).
 2. Click **Start a lock**, set a duration in the **Years / Days / Hours / Mins / Secs** boxes, press **Start**.
-   - A lock of **7 days or more** asks you to confirm first — it'll tell you exactly when it ends.
+   - A lock of **7 days or more** (and "Lock forever") asks you to **type what you're committing to** — it tells you exactly when it ends.
 3. Live your life. 🌱 Blocked lookups show up in the **attempt log** and your streak resets only if you actually try.
-4. Need more time? **+ Extend lock** lets you add any amount. There's deliberately **no** button to cut a lock short — that's the whole point.
+4. Started the wrong one? For the **first 5 minutes** there's an **Undo this lock** button (with a live countdown) — a slip-catcher, not a way out. Once the 5 minutes pass, or as soon as you extend the lock, it's gone for good.
+5. Need more time? **+ Extend lock** lets you add any amount. There's deliberately **no** button to cut a lock short once it has settled — that's the whole point.
 
 > 🖱️ Closing the window with **✕** only hides it to the tray. To fully quit the app, use the tray menu → *Quit app (lock stays active)*. The lock never depends on the app being open.
 
@@ -177,7 +179,7 @@ Each folder has its own README with the deep dive — the [service README](servi
 
 ## 🧪 Tested for real
 
-This wasn't just "it compiles". On a real Windows 11 machine I verified: DNS takeover and exact restore · blocking through the normal Windows resolver (0 leaks in 40 lookups) · real Chrome, Edge and Brave reporting the policies as applied · a lock surviving a **reboot** · tamper attempts (`sc stop`, `sc delete`, resetting DNS by hand, deleting policies and firewall rules, running the uninstaller mid-lock, running the installer mid-lock) · an in-place upgrade · and a full uninstall → reinstall. The service has 79 unit tests (`cargo test`), the UI logic has its own (`node --test`), and the exception flow was exercised end to end against an isolated service instance (block → request → cooldown → unblock → remove).
+This wasn't just "it compiles". On a real Windows 11 machine I verified: DNS takeover and exact restore · blocking through the normal Windows resolver (0 leaks in 40 lookups) · real Chrome, Edge and Brave reporting the policies as applied · a lock surviving a **reboot** · tamper attempts (`sc stop`, `sc delete`, resetting DNS by hand, deleting policies and firewall rules, running the uninstaller mid-lock, running the installer mid-lock) · an in-place upgrade · and a full uninstall → reinstall. The service has 84 unit tests (`cargo test`), the UI logic has its own (`node --test`), and the exception flow was exercised end to end against an isolated service instance (block → request → cooldown → unblock → remove).
 
 ---
 

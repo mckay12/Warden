@@ -126,6 +126,7 @@ function renderForever(emergencyUnlock) {
 
 function renderLock(lock, emergencyUnlock) {
   stopCountdown();
+  updateUndo(lock);
   if (!lock) {
     stopEuCountdown();
     showLockView('idle');
@@ -166,7 +167,7 @@ document.getElementById('start-timed-btn').addEventListener('click', async () =>
   errorEl.textContent = '';
 
   // Long locks get an "are you sure" first (LONG_LOCK_SECONDS in duration-picker.js).
-  if (!window.wardenDuration.confirmLong(duration)) {
+  if (!(await window.wardenDuration.confirmLong(duration))) {
     return;
   }
 
@@ -180,7 +181,12 @@ document.getElementById('start-timed-btn').addEventListener('click', async () =>
 
 document.getElementById('start-forever-btn').addEventListener('click', async () => {
   const errorEl = document.getElementById('start-error');
-  if (!confirm('This cannot be undone from here. Locking forever removes the option to stop blocking from this interface. Continue?')) {
+  if (!(await window.wardenDuration.confirmTyped({
+    title: 'Lock forever?',
+    message: 'This lock has no end date. You will have 5 minutes to undo it. After that, the only way out is the 7-day emergency unlock.',
+    phrase: 'forever',
+    confirmLabel: 'Lock forever',
+  }))) {
     return;
   }
   const response = await sendMessage({ type: 'start_lock', forever: true });
@@ -189,6 +195,56 @@ document.getElementById('start-forever-btn').addEventListener('click', async () 
     return;
   }
   renderLock(response.lock, null);
+});
+
+// ---- Undo window (slip protection) ----
+// For a few minutes after a lock starts the service lets it be undone; the
+// service decides (lock.undo_seconds_left) and enforces it. This only shows
+// the button and counts down.
+
+let undoTimer = null;
+
+function stopUndo() {
+  if (undoTimer) {
+    clearInterval(undoTimer);
+    undoTimer = null;
+  }
+  document.getElementById('undo-box').hidden = true;
+}
+
+function updateUndo(lock) {
+  stopUndo();
+  const secondsLeft = lock && lock.undo_seconds_left > 0 ? lock.undo_seconds_left : 0;
+  if (!secondsLeft) return;
+
+  const deadline = Date.now() + secondsLeft * 1000;
+  const button = document.getElementById('undo-btn');
+  const tick = () => {
+    const s = Math.ceil((deadline - Date.now()) / 1000);
+    if (s <= 0) {
+      stopUndo();
+      return;
+    }
+    button.textContent = `Undo this lock (${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')})`;
+  };
+  document.getElementById('undo-error').textContent = '';
+  document.getElementById('undo-box').hidden = false;
+  tick();
+  undoTimer = setInterval(tick, 1000);
+}
+
+document.getElementById('undo-btn').addEventListener('click', async () => {
+  const errorEl = document.getElementById('undo-error');
+  if (!confirm('Undo this lock? It will end right away.')) {
+    return;
+  }
+  const response = await sendMessage({ type: 'cancel_lock' });
+  if (!response.ok) {
+    errorEl.textContent = response.error;
+    return;
+  }
+  stopUndo();
+  refreshLock();
 });
 
 // "+ Extend lock" opens an inline form (same picker as starting a lock);
@@ -212,7 +268,7 @@ document.getElementById('extend-confirm-btn').addEventListener('click', async ()
   }
   errorEl.textContent = '';
 
-  if (!window.wardenDuration.confirmLong(added, { extending: true })) {
+  if (!(await window.wardenDuration.confirmLong(added, { extending: true }))) {
     return;
   }
 

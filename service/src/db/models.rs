@@ -11,6 +11,8 @@ pub struct Lock {
     pub expires_at: Option<String>,
     pub ended_at: Option<String>,
     pub created_at: String,
+    /// Set when the lock was undone inside its undo window (see `lock_logic`).
+    pub cancelled_at: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

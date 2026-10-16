@@ -10,7 +10,8 @@ CREATE TABLE IF NOT EXISTS lock (
     started_at                  TEXT NOT NULL,
     expires_at                  TEXT,
     ended_at                    TEXT,
-    created_at                  TEXT NOT NULL
+    created_at                  TEXT NOT NULL,
+    cancelled_at                TEXT
 );
 
 CREATE TABLE IF NOT EXISTS lock_extension (

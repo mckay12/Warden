@@ -66,10 +66,12 @@ pub fn run() {
 
 /// Message protocol. Everything is wired up for real as of Phase 11.
 ///
-/// Note what's deliberately absent: there is no `cancel_lock` or
-/// `shorten_lock` message type at all — per the UI/UX spec, that control
-/// doesn't exist anywhere, not even as a disabled button, so there's
-/// nothing to expose here either. Sending one hits the `unknown message
+/// Note what's deliberately absent: there is no `shorten_lock` message type
+/// at all — a lock can only ever be extended. The one exception to "can't
+/// be cancelled" is `cancel_lock`, a slip-catcher: it only works for
+/// `lock_logic::UNDO_WINDOW_SECONDS` after a lock starts, never on a lock that
+/// has been extended, and the service checks that itself (see
+/// `handle_cancel_lock`). Sending a `shorten_lock` hits the `unknown message
 /// type` branch below like any other made-up type would.
 fn handle(request: &Value) -> Value {
     let msg_type = request.get("type").and_then(Value::as_str).unwrap_or("");
@@ -85,6 +87,7 @@ fn handle(request: &Value) -> Value {
         "get_emergency_unlock_history" => handle_get_emergency_unlock_history(request),
         "get_dashboard_stats" => handle_get_dashboard_stats(),
         "get_blocklist_domains" => handle_get_blocklist_domains(),
+        "cancel_lock" => handle_cancel_lock(),
         "request_exception" => handle_request_exception(request),
         "list_exceptions" => handle_list_exceptions(),
         "remove_exception" => handle_remove_exception(request),
@@ -97,11 +100,17 @@ fn err(msg: impl Into<String>) -> Value {
     json!({ "ok": false, "error": msg.into() })
 }
 
-fn lock_json(lock: &Lock) -> Value {
+/// `undo_seconds_left` is worked out here (server clock) so the UI never has
+/// to trust or compare clocks: > 0 means "Undo" is still offered.
+fn lock_json(conn: &rusqlite::Connection, lock: &Lock) -> Value {
+    let extended = db::lock_extension::list_for_lock(conn, lock.id)
+        .map(|e| !e.is_empty())
+        .unwrap_or(true); // if we can't tell, don't offer an undo
     json!({
         "status": lock.status,
         "is_forever": lock.is_forever,
         "expires_at": lock.expires_at,
+        "undo_seconds_left": crate::lock_logic::undo_seconds_left(&lock.started_at, extended, Utc::now()),
     })
 }
 
@@ -146,7 +155,7 @@ fn handle_get_status() -> Value {
             } else {
                 None
             };
-            json!({ "ok": true, "lock": lock_json(&lock), "emergency_unlock": pending })
+            json!({ "ok": true, "lock": lock_json(&conn, &lock), "emergency_unlock": pending })
         }
         Ok(None) => json!({ "ok": true, "lock": null, "emergency_unlock": null }),
         Err(e) => err(format!("db query failed: {e}")),
@@ -237,6 +246,41 @@ fn handle_get_emergency_unlock_history(request: &Value) -> Value {
 /// Starts a new lock — timed (`duration_seconds`) or `forever: true`.
 /// Rejects the request outright if a lock is already active/forever
 /// (ERD §2: only one at a time, enforced here in application logic).
+/// Undoes a lock that was *just* started (slip protection). Allowed only while
+/// the undo window is open and the lock has never been extended; after that
+/// there is no way to cancel or shorten a lock. Checked here, on the service's
+/// own clock and data - the UI only decides whether to show the button.
+fn handle_cancel_lock() -> Value {
+    let conn = match db::open() {
+        Ok(c) => c,
+        Err(e) => return err(format!("db open failed: {e}")),
+    };
+    if let Err(e) = maybe_expire(&conn) {
+        return err(format!("expiry check failed: {e}"));
+    }
+    let lock = match db::lock::get_current(&conn) {
+        Ok(Some(l)) => l,
+        Ok(None) => return err("there is no active lock to undo"),
+        Err(e) => return err(format!("db query failed: {e}")),
+    };
+    match db::lock_extension::list_for_lock(&conn, lock.id) {
+        Ok(ext) if ext.is_empty() => {}
+        Ok(_) => return err("a lock that has been extended can't be undone"),
+        Err(e) => return err(format!("db query failed: {e}")),
+    }
+    if crate::lock_logic::undo_seconds_left(&lock.started_at, false, Utc::now()) <= 0 {
+        return err(format!(
+            "the {}-minute undo window has passed; a lock can't be cancelled now",
+            crate::lock_logic::UNDO_WINDOW_SECONDS / 60
+        ));
+    }
+    match db::lock::cancel(&conn, lock.id) {
+        Ok(true) => json!({ "ok": true }),
+        Ok(false) => err("the lock had already ended"),
+        Err(e) => err(format!("db update failed: {e}")),
+    }
+}
+
 /// JSON for one exception, with its state worked out against the clock:
 /// "pending" (cooldown still running) or "active" (in force).
 fn exception_json(e: &db::allow_exception::AllowException, now: DateTime<Utc>) -> Value {
@@ -347,7 +391,7 @@ fn handle_start_lock(request: &Value) -> Value {
     };
 
     match result {
-        Ok(lock) => json!({ "ok": true, "lock": lock_json(&lock) }),
+        Ok(lock) => json!({ "ok": true, "lock": lock_json(&conn, &lock) }),
         Err(e) => err(format!("db insert failed: {e}")),
     }
 }
@@ -408,7 +452,7 @@ fn handle_extend_lock(request: &Value) -> Value {
     }
 
     match db::lock::get_by_id(&conn, current.id) {
-        Ok(Some(lock)) => json!({ "ok": true, "lock": lock_json(&lock) }),
+        Ok(Some(lock)) => json!({ "ok": true, "lock": lock_json(&conn, &lock) }),
         Ok(None) => err("lock disappeared after update (unexpected)"),
         Err(e) => err(format!("db query failed: {e}")),
     }

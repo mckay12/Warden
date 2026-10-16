@@ -37,13 +37,27 @@ test('the long-lock warning starts at exactly 7 days', () => {
   assert.equal(d.isLong(600), false);
 });
 
-test('warning messages name the length and say it cannot be undone', () => {
+test('warning messages name the length and the undo window', () => {
   const now = Date.UTC(2026, 9, 14, 12, 0, 0);
   const start = d.longLockMessage(8 * DAY, false, now);
   assert.match(start, /^This lock will last 8 days \(until /);
-  assert.match(start, /cannot be shortened or cancelled\. Start it\?$/);
+  assert.match(start, /You will have 5 minutes to undo it\. After that it cannot be shortened or cancelled\.$/);
+  assert.equal(d.UNDO_WINDOW_MINUTES, 5);
   assert.equal(
     d.longLockMessage(2 * 365 * DAY, true, now),
-    'You are adding 2 years to this lock.\n\nOnce added, it cannot be shortened or cancelled. Extend it?',
+    'You are adding 2 years to this lock.\n\nExtending cannot be undone, and it ends the 5-minute undo window.',
   );
+});
+
+test('typed confirmation ignores case, spaces and punctuation but not content', () => {
+  for (const typed of ['183 days', '183 DAYS', '183days', '  183 Days. ', '183-days']) {
+    assert.equal(d.phraseMatches(typed, '183 days'), true, typed);
+  }
+  assert.equal(d.phraseMatches('1 year, 2 days', '1 year, 2 days'), true);
+  assert.equal(d.phraseMatches('1year2days', '1 year, 2 days'), true);
+  for (const typed of ['', ' ', '183', '18 days', '184 days', '183 day', 'days', 'forever']) {
+    assert.equal(d.phraseMatches(typed, '183 days'), false, `should not accept ${JSON.stringify(typed)}`);
+  }
+  assert.equal(d.phraseMatches('forever', 'forever'), true);
+  assert.equal(d.phraseMatches('', ''), false, 'an empty expected phrase never matches');
 });

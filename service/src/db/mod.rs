@@ -58,6 +58,21 @@ pub fn open_in_memory() -> rusqlite::Result<Connection> {
 fn init(conn: &Connection) -> rusqlite::Result<()> {
     conn.pragma_update(None, "foreign_keys", true)?;
     conn.execute_batch(schema::SCHEMA)?;
+    // `CREATE TABLE IF NOT EXISTS` never alters a table that already exists, so
+    // columns added after a database was first created are added here.
+    add_column_if_missing(conn, "lock", "cancelled_at", "TEXT")?;
+    Ok(())
+}
+
+fn add_column_if_missing(conn: &Connection, table: &str, column: &str, decl: &str) -> rusqlite::Result<()> {
+    let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
+    let exists = stmt
+        .query_map([], |row| row.get::<_, String>(1))?
+        .filter_map(Result::ok)
+        .any(|name| name == column);
+    if !exists {
+        conn.execute(&format!("ALTER TABLE {table} ADD COLUMN {column} {decl}"), [])?;
+    }
     Ok(())
 }
 
@@ -65,4 +80,41 @@ fn init(conn: &Connection) -> rusqlite::Result<()> {
 /// ERD is stored as (SQLite has no native datetime type).
 pub fn now() -> String {
     chrono::Utc::now().to_rfc3339()
+}
+
+#[cfg(test)]
+mod migration_tests {
+    use super::*;
+
+    #[test]
+    fn an_older_database_without_cancelled_at_is_upgraded_in_place() {
+        let conn = Connection::open_in_memory().unwrap();
+        // The `lock` table exactly as it was before undo existed.
+        conn.execute_batch(
+            "CREATE TABLE lock (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                status TEXT NOT NULL CHECK (status IN ('active', 'expired', 'forever')),
+                is_forever INTEGER NOT NULL CHECK (is_forever IN (0, 1)),
+                initial_duration_seconds INTEGER,
+                started_at TEXT NOT NULL,
+                expires_at TEXT,
+                ended_at TEXT,
+                created_at TEXT NOT NULL
+            );
+            INSERT INTO lock (status, is_forever, initial_duration_seconds, started_at, expires_at, created_at)
+            VALUES ('active', 0, 3600, '2026-01-01T00:00:00+00:00', '2999-01-01T00:00:00+00:00', '2026-01-01T00:00:00+00:00');",
+        )
+        .unwrap();
+
+        init(&conn).unwrap();
+        init(&conn).unwrap(); // running it again must be harmless
+
+        // existing data survives, and the new column is there and empty
+        let cancelled: Option<String> = conn
+            .query_row("SELECT cancelled_at FROM lock WHERE id = 1", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(cancelled, None);
+        let current = lock::get_current(&conn).unwrap().expect("the old lock must still be readable");
+        assert_eq!(current.initial_duration_seconds, Some(3600));
+    }
 }

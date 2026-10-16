@@ -68,6 +68,12 @@
         <p class="form-note" id="cancel-emergency-unlock-error"></p>
       </div>
     </div>
+
+    <div class="undo-box" id="undo-box" hidden>
+        <span class="undo-text">Started by mistake?</span>
+        <button class="link-btn undo-btn" id="undo-btn">Undo this lock</button>
+        <p class="form-note" id="undo-error"></p>
+      </div>
   </div>
 
   <div class="log-section">
@@ -78,7 +84,7 @@
 
   <a href="#" class="link dashboard-link" id="dashboard-link">View dashboard →</a>
 
-  <p class="note">A lock can be extended but never shortened or cancelled. Lock state and the attempt log come from the Warden service.</p>
+  <p class="note">A new lock can be undone for its first 5 minutes. After that it can be extended but never shortened or cancelled. Lock state and the attempt log come from the Warden service.</p>
   <script src="duration-picker.js"></script>
   <script src="popup.js"></script>
 </body>
