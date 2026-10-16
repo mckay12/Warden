@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Warden",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Self-imposed commitment device that blocks adult content by domain and keyword pattern.",
   "permissions": ["declarativeNetRequest", "nativeMessaging", "alarms"],
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAzWMSFPZhlj9sCARBU8Rqqal6TYndpiM20RXI0MYXpQeWKG2NoUX94c96oKBIYn5sk5ol40cKZpEewm0iZoCdNqR4MGTto5O4/xDf13VACFCz1Z1JN6p6CTUcAhYKgv/7JI6Pu/D3mvbbWObcX30/MRFH24dAuMujcQNAZNfLbdgb7xdzUFPR+zwwb030zjYL5ONU8jx9CUmqig8O434ZgkLtM0FGz7we+mlPw85RB/wco6zMVADITDgZSmFdsokVBFcuuUBlu98rdmhI+MeAzgpDtqrDamOrvuIoi3E3PqpRwrUY6I/NFqYyUO5y8AGRW3S6psteWWl5KinXuk48AwIDAQAB",

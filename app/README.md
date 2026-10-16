@@ -49,7 +49,7 @@ The Warden service must be installed and running (`warden-service install`).
 ## Installer
 
 `cargo build --release` in `../service`, then `npx tauri build` here, produces
-`src-tauri/target/release/bundle/nsis/Warden_0.1.0_x64-setup.exe` (unsigned, so
+`src-tauri/target/release/bundle/nsis/Warden_0.2.0_x64-setup.exe` (unsigned, so
 SmartScreen shows "Run anyway"). It is per-machine (UAC), bundles
 `warden-service.exe` next to the app, and its hooks (`src-tauri/installer-hooks.nsh`):
 

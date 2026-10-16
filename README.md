@@ -68,7 +68,7 @@ When a lock is active, Warden stacks several defences, because any single one ha
 
 ### 📦 Install (the easy way)
 
-Build or grab `Warden_0.1.0_x64-setup.exe` (see [Building](#-building-from-source)) and run it.
+Build or grab `Warden_0.2.0_x64-setup.exe` (see [Building](#-building-from-source)) and run it.
 
 - It asks for admin rights (it needs to register a Windows service).
 - It's **unsigned** (this is a personal project for now), so Windows SmartScreen will say "Unknown publisher" — click **More info → Run anyway**.
@@ -130,7 +130,7 @@ cargo build --release
 # 2) the desktop app + installer
 cd ../app
 npm install
-npx tauri build          # → app/src-tauri/target/release/bundle/nsis/Warden_0.1.0_x64-setup.exe
+npx tauri build          # → app/src-tauri/target/release/bundle/nsis/Warden_0.2.0_x64-setup.exe
 ```
 
 For quick iteration: `npx tauri build --debug --no-bundle` gives you a debug `warden-desktop.exe`.
